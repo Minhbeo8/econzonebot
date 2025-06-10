@@ -1,11 +1,11 @@
-# bot/cogs/earn/beg_cmd.py
 import nextcord
 from nextcord.ext import commands
 import random
 from datetime import datetime
 import logging
 
-from core.utils import try_send, get_time_left_str, require_travel_check
+# [SỬA] Import hàm mới và bỏ hàm cũ
+from core.utils import try_send, format_relative_timestamp, require_travel_check
 from core.config import BEG_COOLDOWN
 from core.icons import ICON_LOADING, ICON_GIFT, ICON_WARNING, ICON_INFO, ICON_ERROR, ICON_BANK_MAIN
 
@@ -22,13 +22,17 @@ class BegCommandCog(commands.Cog, name="Beg Command"):
     async def beg(self, ctx: commands.Context):
         author_id = ctx.author.id
         
+        now = datetime.now().timestamp()
         last_beg = self.bot.db.get_cooldown(author_id, "beg")
-        time_left = get_time_left_str(last_beg, BEG_COOLDOWN)
-        if time_left:
-            await try_send(ctx, content=f"{ICON_LOADING} Đừng xin liên tục thế chứ! Chờ: **{time_left}**.")
+        
+        # [SỬA] Sử dụng logic timestamp mới
+        if now < last_beg + BEG_COOLDOWN:
+            cooldown_end_timestamp = last_beg + BEG_COOLDOWN
+            relative_time_str = format_relative_timestamp(cooldown_end_timestamp)
+            await try_send(ctx, content=f"{ICON_LOADING} Đừng xin liên tục thế chứ! Hãy quay lại sau ({relative_time_str}).")
             return
 
-        self.bot.db.set_cooldown(author_id, "beg", datetime.now().timestamp())
+        self.bot.db.set_cooldown(author_id, "beg", now)
         
         if random.random() < 0.7: 
             earnings = random.randint(10, 100)
