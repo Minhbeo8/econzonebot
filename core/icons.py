@@ -73,7 +73,7 @@ ICON_SURVIVAL = "❤️‍🩹"
 ICON_HEALTH = "❤️" # [MỚI]
 ICON_HUNGER = "🍔" # [MỚI]
 ICON_ENERGY = "⚡" # [MỚI]
-
+ICON_UTILITY = "🛠️"
 
 # ======================================================================
 # --- GIAO DIỆN & TIỆN ÍCH ---
