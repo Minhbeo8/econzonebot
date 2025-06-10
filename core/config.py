@@ -98,3 +98,13 @@ BARE_COMMAND_MAP = {
     "sell": "sell",
     "use": "use"
 }
+
+# --- Cấu hình cho Tác vụ Sinh tồn (Survival Task) ---
+# Tần suất chạy tác vụ (đơn vị: phút)
+SURVIVAL_TICK_RATE_MINUTES = 20
+
+# Lượng chỉ số bị giảm mỗi lần chạy
+SURVIVAL_STAT_DECAY = 1
+
+# Lượng máu được hồi lại nếu đủ điều kiện (độ no > 70 và năng lượng > 50)
+SURVIVAL_HEALTH_REGEN = 2
