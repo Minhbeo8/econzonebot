@@ -1,83 +1,64 @@
-# bot/core/utils.py
 import nextcord
 from nextcord.ext import commands
-from datetime import datetime, timedelta
 import logging
-from functools import wraps
+from typing import Optional, Union
+import json
+from datetime import datetime, timedelta
 
-from .database import get_or_create_global_user_profile
-from .travel_manager import handle_travel_event
-from .config import WANTED_LEVEL_CRIMINAL_THRESHOLD, CITIZEN_TITLES, CRIMINAL_TITLES
-from .icons import ICON_ERROR
+logger = logging.getLogger(__name__)
 
-utils_logger = logging.getLogger(__name__)
+async def try_send(
+    ctx: Union[commands.Context, nextcord.Interaction],
+    content: Optional[str] = None,
+    embed: Optional[nextcord.Embed] = None,
+    view: Optional[nextcord.ui.View] = None,
+    ephemeral: bool = False
+) -> Optional[nextcord.Message]:
+    """
+    Cố gắng gửi tin nhắn. Trả về đối tượng tin nhắn nếu thành công, None nếu thất bại.
+    Hỗ trợ cả lệnh prefix và lệnh slash.
+    """
+    send_method = None
+    if isinstance(ctx, commands.Context):
+        send_method = ctx.send
+    elif isinstance(ctx, nextcord.Interaction):
+        # Kiểm tra xem interaction đã được trả lời chưa
+        if ctx.response.is_done():
+            send_method = ctx.followup.send
+        else:
+            send_method = ctx.response.send_message
 
-def require_travel_check(func):
-    @wraps(func)
-    async def wrapper(cog_instance, ctx, *args, **kwargs):
-        if not ctx.guild:
-            return await func(cog_instance, ctx, *args, **kwargs)
-
-        author_id = ctx.author.id
-        guild_id = ctx.guild.id
-
-        economy_data = getattr(cog_instance.bot, 'economy_data')
-        global_profile = get_or_create_global_user_profile(economy_data, author_id)
-
-        last_active_guild_id = global_profile.get("last_active_guild_id")
-
-        if last_active_guild_id != guild_id:
-            if last_active_guild_id is not None:
-                utils_logger.info(f"TRAVEL_CHECK: User {author_id} is traveling to new guild {guild_id}. Triggering event.")
-                await handle_travel_event(ctx, cog_instance.bot)
-
-            global_profile["last_active_guild_id"] = guild_id
-
-        return await func(cog_instance, ctx, *args, **kwargs)
-    return wrapper
-
-def get_player_title(level: int, wanted_level: float) -> str:
-    title_map = CRIMINAL_TITLES if wanted_level >= WANTED_LEVEL_CRIMINAL_THRESHOLD else CITIZEN_TITLES
-
-    current_title = ""
-    for level_threshold, title in sorted(title_map.items(), reverse=True):
-        if level >= level_threshold:
-            current_title = title
-            break
-
-    return f"{current_title} (Level {level})"
-
-async def try_send(target, **kwargs):
-    try:
-        return await target.send(**kwargs)
-    except (nextcord.Forbidden, nextcord.HTTPException) as e:
-        utils_logger.warning(f"Không thể gửi tin nhắn tới target '{getattr(target, 'name', 'N/A')}': {e}")
+    if not send_method:
+        logger.error(f"Không thể xác định phương thức gửi cho context loại: {type(ctx)}")
         return None
 
-def get_time_left_str(last_timestamp: float, cooldown_seconds: int) -> str:
-    if not last_timestamp:
-        return ""
+    try:
+        # Lệnh slash có tham số ephemeral
+        if isinstance(ctx, nextcord.Interaction) and ephemeral:
+            return await send_method(content=content, embed=embed, view=view, ephemeral=True)
+        else:
+            return await send_method(content=content, embed=embed, view=view)
+    except nextcord.errors.NotFound:
+        logger.warning(f"Không thể gửi tin nhắn: Interaction hoặc Context không còn tồn tại.")
+    except Exception as e:
+        logger.error(f"Lỗi không xác định khi gửi tin nhắn: {e}", exc_info=True)
+    return None
 
-    now = datetime.now().timestamp()
-    time_since = now - last_timestamp
+def format_large_number(number: int) -> str:
+    """Định dạng số lớn với dấu phẩy."""
+    return "{:,}".format(number)
 
-    if time_since < cooldown_seconds:
-        time_left = cooldown_seconds - time_since
-        return str(timedelta(seconds=int(time_left)))
-    return ""
-
-def format_large_number(num):
-    if abs(num) < 1000:
-        return str(num)
-    if abs(num) < 1_000_000:
-        return f"{num / 1000:.1f}k".replace(".0", "")
-    if abs(num) < 1_000_000_000:
-        return f"{num / 1_000_000:.2f}M".replace(".00", "")
-    if abs(num) < 1_000_000_000_000:
-        return f"{num / 1_000_000_000:.2f}B".replace(".00", "")
-    return f"{num / 1_000_000_000_000:.2f}T".replace(".00", "")
-
-from datetime import datetime
+def get_player_title(local_level: int, wanted_level: float) -> str:
+    """
+    Tạo danh hiệu cho người chơi dựa trên các chỉ số được truyền vào.
+    """
+    if wanted_level > 20: return "🔥 Bị Truy Nã Gắt Gao"
+    if wanted_level > 10: return "🩸 Tội Phạm Khét Tiếng"
+    if wanted_level > 5: return "💀 Kẻ Ngoài Vòng Pháp Luật"
+    if local_level > 50: return "💎 Huyền Thoại Sống"
+    if local_level > 30: return "🏆 Lão Làng"
+    if local_level > 15: return "🥇 Dân Chơi"
+    return "🌱 Tấm Chiếu Mới"
 
 def format_relative_timestamp(future_timestamp: float) -> str:
     """
@@ -85,3 +66,16 @@ def format_relative_timestamp(future_timestamp: float) -> str:
     Ví dụ: <t:1678886400:R> sẽ hiển thị là "in 2 hours".
     """
     return f"<t:{int(future_timestamp)}:R>"
+
+def require_travel_check(func):
+    """
+    Decorator để kiểm tra xem người dùng có đang trong trạng thái 'di chuyển' hay không.
+    """
+    async def wrapper(self, ctx: commands.Context, *args, **kwargs):
+        # Logic này cần được hoàn thiện nếu có hệ thống di chuyển
+        # Ví dụ: kiểm tra một trạng thái trong CSDL
+        # if self.bot.db.is_user_traveling(ctx.author.id):
+        #     await try_send(ctx, content="Bạn đang di chuyển, không thể thực hiện hành động này.")
+        #     return
+        await func(self, ctx, *args, **kwargs)
+    return wrapper
