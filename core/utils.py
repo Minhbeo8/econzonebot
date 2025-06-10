@@ -76,3 +76,12 @@ def format_large_number(num):
     if abs(num) < 1_000_000_000_000:
         return f"{num / 1_000_000_000:.2f}B".replace(".00", "")
     return f"{num / 1_000_000_000_000:.2f}T".replace(".00", "")
+
+from datetime import datetime
+
+def format_relative_timestamp(future_timestamp: float) -> str:
+    """
+    Chuyển đổi một timestamp trong tương lai thành định dạng timestamp tương đối của Discord.
+    Ví dụ: <t:1678886400:R> sẽ hiển thị là "in 2 hours".
+    """
+    return f"<t:{int(future_timestamp)}:R>"
