@@ -189,7 +189,33 @@ def update_wanted_level(user_id: int, new_wanted_level: float):
     conn.execute("UPDATE users SET wanted_level = ? WHERE user_id = ?", (new_wanted_level, user_id))
     conn.commit()
     conn.close()
-
+def perform_survival_decay(decay_amount: int, regen_amount: int):
+    """
+    Thực hiện việc giảm chỉ số sinh tồn và hồi máu cho tất cả user.
+    Hàm này chạy một vài lệnh UPDATE hiệu quả trên toàn bộ CSDL.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Hồi máu cho những người dùng có đủ năng lượng và độ no
+        cursor.execute("""
+            UPDATE user_guild_data
+            SET health = MIN(100, health + ?)
+            WHERE hunger > 70 AND energy > 50
+        """, (regen_amount,))
+        
+        # 2. Giảm độ no và năng lượng cho tất cả người dùng
+        cursor.execute("""
+            UPDATE user_guild_data
+            SET 
+                hunger = MAX(0, hunger - ?),
+                energy = MAX(0, energy - ?)
+        """, (decay_amount, decay_amount))
+        
+        conn.commit()
+    finally:
+        conn.close()
 # --- QUẢN LÝ COOLDOWN ---
 def get_cooldown(user_id: int, command: str) -> float:
     # (Hàm này giữ nguyên)
