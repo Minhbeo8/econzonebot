@@ -16,7 +16,6 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 main_logger = logging.getLogger(__name__)
 
 # Danh sách các cogs sẽ được tải khi bot khởi động
-# Đã dọn dẹp, chỉ giữ lại các cogs cần thiết cho phiên bản SQLite
 INITIAL_COGS = [
     # Admin
     "cogs.admin.addmoney_cmd",
@@ -51,7 +50,7 @@ INITIAL_COGS = [
     "cogs.games.slots_cmd",
     
     # Misc
-    "cogs.misc.dashboard_cmd",
+    "cogs.misc.info_cmd", # <-- ĐÃ SỬA
     "cogs.misc.globallb_cmd",
     "cogs.misc.leaderboard_cmd",
     "cogs.misc.richest_cmd",
@@ -78,7 +77,6 @@ INITIAL_COGS = [
     # Test
     "cogs.test_slash_cog",
 ]
-
 def load_all_cogs():
     """Tải tất cả các cogs được định nghĩa trong INITIAL_COGS."""
     main_logger.info(f"--- Bắt đầu tải {len(INITIAL_COGS)} Cogs ---")
