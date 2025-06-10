@@ -1,105 +1,92 @@
-from flask import Flask, render_template, request, flash, redirect, url_for, session, jsonify
-import sqlite3
-import os
-import json
-from dotenv import load_dotenv
+import nextcord
+from nextcord.ext import commands
+import logging
+from core.utils import get_player_title, format_large_number, try_send
+from core.checks import is_guild_owner_check
+from core.icons import *
 
-# Tải các biến môi trường từ file .env hoặc Secrets
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-# --- BIẾN TOÀN CỤC ĐỂ GIỮ ĐỐI TƯỢNG BOT ---
-# Biến này sẽ được gán giá trị từ main.py khi bot khởi động
-discord_bot = None
+# --- View và các hàm check ---
+async def is_guild_owner_interaction(interaction: nextcord.Interaction) -> bool:
+    if not interaction.guild:
+        return False
+    return interaction.user.id == interaction.guild.owner_id
 
-# Khởi tạo ứng dụng Flask
-app = Flask(__name__)
-app.secret_key = os.getenv("BOT_TOKEN", "a_default_secret_key_for_development")
+class DashboardView(nextcord.ui.View):
+    def __init__(self, interaction: nextcord.Interaction, is_mafia: bool, is_police: bool, is_owner: bool):
+        super().__init__(timeout=None)
+        self.interaction_user = interaction.user
+        if is_mafia:
+            self.add_item(nextcord.ui.Button(label="🏛️ Chợ Đen", style=nextcord.ButtonStyle.grey, custom_id="dash_blackmarket"))
+        if is_police:
+            self.add_item(nextcord.ui.Button(label="⚖️ Bắt giữ", style=nextcord.ButtonStyle.primary, custom_id="dash_arrest"))
+        if is_owner:
+            self.add_item(nextcord.ui.Button(label="👑 Thưởng Ecobit", style=nextcord.ButtonStyle.blurple, custom_id="dash_addmoney"))
+    
+    async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
+        if interaction.data.get("custom_id") == "dash_addmoney":
+            if not await is_guild_owner_interaction(interaction):
+                await interaction.response.send_message("Chỉ chủ server mới có thể dùng nút này!", ephemeral=True)
+                return False
+        # Mở rộng để các vai trò khác có thể dùng nút của mình
+        # ...
+        if interaction.user.id != self.interaction_user.id:
+            await interaction.response.send_message("Đây không phải là dashboard của bạn!", ephemeral=True)
+            return False
+        return True
 
-# Đường dẫn tới file CSDL
-DB_PATH = "data/econzone.sqlite"
+class DashboardCommandCog(commands.Cog, name="Dashboard Command"):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        logger.info("DashboardCommandCog (SQLite Ready) initialized.")
 
-def get_db_connection():
-    """Tạo kết nối tới CSDL SQLite."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    @nextcord.slash_command(name="dashboard", description="Xem bảng thông tin cá nhân và các hành động của bạn.")
+    async def dashboard(self, interaction: nextcord.Interaction):
+        await interaction.response.defer(ephemeral=True)
 
-def get_owner_ids():
-    """Đọc danh sách ID của Owner/Moderator từ file moderators.json."""
-    try:
-        with open('moderators.json', 'r') as f:
-            data = json.load(f)
-        # Lấy danh sách ID từ file, nếu không có thì dùng ID mặc định
-        return data.get('moderator_ids', [])
-    except FileNotFoundError:
-        # Trả về danh sách rỗng nếu file không tồn tại
-        return []
+        if not interaction.guild:
+            await interaction.followup.send(f"{ICON_ERROR} Lệnh này chỉ hoạt động trong server.", ephemeral=True)
+            return
 
-OWNER_IDS = get_owner_ids()
+        user = interaction.user
+        global_profile = self.bot.db.get_or_create_global_user_profile(user.id)
+        local_data = self.bot.db.get_or_create_user_local_data(user.id, interaction.guild.id)
+        
+        embed = nextcord.Embed(title=f"Bảng điều khiển của {user.name}", color=user.color)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        
+        # Sửa lại cách gọi hàm get_player_title
+        title = get_player_title(local_data['level_local'], global_profile['wanted_level'])
+        embed.add_field(name="Chức danh tại Server", value=title, inline=False)
+        
+        embed.add_field(
+            name="Tài chính",
+            value=f"{ICON_ECOIN} **Ecoin:** `{format_large_number(local_data['local_balance_earned'])}`\n"
+                  f"{ICON_ECOBIT} **Ecobit:** `{format_large_number(local_data['local_balance_adadd'])}`\n"
+                  f"{ICON_BANK_MAIN} **Bank:** `{format_large_number(global_profile['bank_balance'])}`",
+            inline=True
+        )
 
-@app.before_request
-def require_login():
-    """Middleware kiểm tra xem người dùng đã đăng nhập chưa trước mỗi yêu cầu."""
-    # Các trang không yêu cầu đăng nhập
-    allowed_routes = ['login', 'static', 'stats']
-    if request.endpoint not in allowed_routes and 'user_id' not in session:
-        return redirect(url_for('login'))
+        embed.add_field(
+            name="Sinh tồn",
+            value=f"❤️ **Máu:** `{local_data['health']}/100`\n"
+                  f"🍔 **Độ no:** `{local_data['hunger']}/100`\n"
+                  f"⚡ **Năng lượng:** `{local_data['energy']}/100`",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="Trạng thái",
+            value=f"🕵️ **Điểm Nghi ngờ:** `{global_profile['wanted_level']:.2f}`",
+            inline=True
+        )
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Xử lý việc đăng nhập."""
-    if request.method == 'POST':
-        user_id_input = request.form.get('user_id', type=int)
-        if user_id_input in OWNER_IDS:
-            session['user_id'] = user_id_input
-            flash('Đăng nhập thành công!', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            flash('ID của bạn không có quyền truy cập!', 'danger')
-    return render_template('login.html')
+        is_owner = await is_guild_owner_interaction(interaction)
+        # is_mafia, is_police cần logic để xác định vai trò của người dùng trong server
+        view = DashboardView(interaction, is_mafia=False, is_police=False, is_owner=is_owner)
 
-@app.route("/")
-def dashboard():
-    """Hiển thị trang dashboard chính."""
-    user_count = 0
-    top_users = []
-    # Chỉ truy vấn nếu file CSDL tồn tại
-    if os.path.exists(DB_PATH):
-        try:
-            conn = get_db_connection()
-            user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-            top_users = conn.execute("SELECT user_id, bank_balance FROM users ORDER BY bank_balance DESC LIMIT 10").fetchall()
-            conn.close()
-        except sqlite3.OperationalError:
-            flash("CSDL SQLite tồn tại nhưng có vẻ trống.", "warning")
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    return render_template('dashboard.html', user_count=user_count, top_users=top_users)
-
-@app.route("/stats")
-def stats():
-    """Cung cấp các chỉ số trực tiếp từ bot dưới dạng JSON."""
-    if discord_bot and discord_bot.is_ready():
-        return jsonify({
-            'guild_count': len(discord_bot.guilds),
-            'user_count': len(discord_bot.users),
-            'latency': f"{discord_bot.latency * 1000:.2f} ms",
-            'is_ready': discord_bot.is_ready()
-        })
-    else:
-        return jsonify({'error': 'Bot is not ready or not connected.'}), 503
-
-# --- HÀM CHÍNH ĐỂ CHẠY DASHBOARD ---
-def run_flask_app(bot_instance):
-    """
-    Hàm này được gọi từ main.py, nhận đối tượng bot và khởi chạy máy chủ Flask.
-    """
-    global discord_bot
-    discord_bot = bot_instance
-    # Chạy trên host 0.0.0.0 để Replit có thể hiển thị webview
-    app.run(host="0.0.0.0", port=8080)
-
-# Đoạn mã này cho phép chạy dashboard riêng lẻ để kiểm tra giao diện
-if __name__ == "__main__":
-    print("Để chạy dashboard cùng bot, hãy chạy file main.py")
-    print("Chạy dashboard ở chế độ test riêng lẻ...")
-    app.run(debug=True, port=5000)
+def setup(bot: commands.Bot):
+    bot.add_cog(DashboardCommandCog(bot))
