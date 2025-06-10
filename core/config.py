@@ -1,5 +1,9 @@
 # bot/core/config.py
+BOT_OWNER_IDS = [1370417047070048276] # <--- Thay bằng ID của bạn
 
+# --- Cấu hình Chung ---
+COMMAND_PREFIX = "!"
+# ... (các biến config khác đã có) ...
 # --- Bot Configuration ---
 COMMAND_PREFIX = '!'
 ECONOMY_FILE = 'economy.json'
