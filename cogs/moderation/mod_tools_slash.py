@@ -1,10 +1,8 @@
-# bot/cogs/moderation/mod_tools_slash.py
 import nextcord
 from nextcord.ext import commands, application_checks
 import logging
 
-from core.database import get_or_create_global_user_profile, get_or_create_user_local_data
-# [SỬA] Import từ file checks.py mới
+# [SỬA] Xóa bỏ import từ core.database
 from core.checks import check_is_bot_moderator_interaction
 from core.utils import format_large_number
 from core.icons import *
@@ -14,30 +12,25 @@ logger = logging.getLogger(__name__)
 class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        logger.info("ModToolsSlashCog (Consolidated) initialized.")
+        logger.info("ModToolsSlashCog (SQLite Ready) initialized.")
 
-    # --- Lệnh cha /mod ---
     @nextcord.slash_command(name="mod", description="Các công cụ dành cho Moderator của Bot")
     async def mod(self, interaction: nextcord.Interaction):
         pass
 
-    # --- Lệnh cha /mod set ---
     @mod.subcommand(name="set", description="Thiết lập một giá trị dữ liệu cụ thể cho người dùng.")
     async def set_group(self, interaction: nextcord.Interaction):
         pass
 
-    # --- Lệnh con /mod ping (Gộp từ các file khác) ---
     @mod.subcommand(name="ping", description="Kiểm tra xem bạn có quyền Moderator của bot không.")
     @application_checks.check(check_is_bot_moderator_interaction)
     async def mod_ping(self, interaction: nextcord.Interaction):
         logger.info(f"MODERATOR ACTION: {interaction.user.id} đã sử dụng '/mod ping' thành công.")
-        # Tin nhắn đã được gửi từ hàm check nếu thất bại, nên chỉ cần xử lý khi thành công
         await interaction.response.send_message(
-            f"{ICON_SUCCESS} {interaction.user.mention}, bạn có quyền Moderator/Owner! Các lệnh `/mod` đã sẵn sàng!",
+            f"{ICON_SUCCESS} {interaction.user.mention}, bạn có quyền Moderator/Owner!",
             ephemeral=True
         )
 
-    # --- Lệnh con /mod view_user ---
     @mod.subcommand(name="view_user", description="Xem chi tiết toàn bộ dữ liệu kinh tế của một người dùng.")
     @application_checks.check(check_is_bot_moderator_interaction)
     async def view_user(
@@ -56,21 +49,20 @@ class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
             return
 
         try:
-            economy_data = self.bot.economy_data
-            global_profile = get_or_create_global_user_profile(economy_data, user.id)
-            local_data = get_or_create_user_local_data(global_profile, interaction.guild.id)
+            # [SỬA] Sử dụng self.bot.db để truy vấn CSDL SQLite
+            global_profile = self.bot.db.get_or_create_global_user_profile(user.id)
+            local_data = self.bot.db.get_or_create_user_local_data(user.id, interaction.guild.id)
 
-            bank_balance = global_profile.get("bank_balance", 0)
-            wanted_level = global_profile.get("wanted_level", 0.0)
-            level_global = global_profile.get("level_global", 1)
-            xp_global = global_profile.get("xp_global", 0)
+            # [SỬA] Truy cập dữ liệu từ đối tượng sqlite3.Row
+            bank_balance = global_profile['bank_balance']
+            wanted_level = global_profile['wanted_level']
+            level_global = global_profile['level_global']
+            xp_global = global_profile['xp_global']
 
-            local_balance = local_data.get("local_balance", {})
-            earned = local_balance.get("earned", 0)
-            adadd = local_balance.get("adadd", 0)
-            level_local = local_data.get("level_local", 1)
-            xp_local = local_data.get("xp_local", 0)
-            ticket_count = len(local_data.get("tickets", []))
+            earned = local_data['local_balance_earned']
+            adadd = local_data['local_balance_adadd']
+            level_local = local_data['level_local']
+            xp_local = local_data['xp_local']
 
             embed = nextcord.Embed(
                 title=f"{ICON_PROFILE} Dữ liệu Kinh tế của {user.name}",
@@ -84,7 +76,6 @@ class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
                 value=(
                     f"  {ICON_TIEN_SACH} Earned: `{format_large_number(earned)}`\n"
                     f"  {ICON_TIEN_LAU} Admin-add: `{format_large_number(adadd)}`\n"
-                    f"  {ICON_TICKET} Tickets: `{ticket_count}`\n"
                     f"  ✨ Level/XP Local: `{level_local}` / `{format_large_number(xp_local)}`"
                 ),
                 inline=True
@@ -107,7 +98,6 @@ class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
             logger.error(f"Lỗi trong lệnh /mod view_user: {e}", exc_info=True)
             await interaction.followup.send(f"{ICON_ERROR} Đã xảy ra lỗi khi truy xuất dữ liệu.", ephemeral=True)
 
-    # --- Lệnh con /mod set balance ---
     @set_group.subcommand(name="balance", description="Thiết lập số dư tiền tệ cho một người dùng.")
     @application_checks.check(check_is_bot_moderator_interaction)
     async def set_balance(
@@ -118,30 +108,37 @@ class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
         amount: int = nextcord.SlashOption(name="amount", description="Số tiền muốn thiết lập (số âm sẽ được đặt về 0).", required=True)
     ):
         await interaction.response.defer(ephemeral=True)
-
         final_amount = max(0, amount)
 
         try:
-            economy_data = self.bot.economy_data
-            global_profile = get_or_create_global_user_profile(economy_data, user.id)
-
             original_value = 0
-
+            db_balance_type = ""
+            icon = ""
+            
+            # [SỬA] Sử dụng self.bot.db để cập nhật, không sửa dict nữa
             if balance_type == "bank":
-                original_value = global_profile.get("bank_balance", 0)
-                global_profile["bank_balance"] = final_amount
+                profile = self.bot.db.get_or_create_global_user_profile(user.id)
+                original_value = profile['bank_balance']
+                db_balance_type = 'bank_balance'
                 icon = ICON_BANK
+                self.bot.db.update_balance(user.id, None, db_balance_type, final_amount)
             else:
                 if not interaction.guild:
                     await interaction.followup.send(f"{ICON_ERROR} Cần dùng lệnh trong server để set balance Local.", ephemeral=True)
                     return
-                local_data = get_or_create_user_local_data(global_profile, interaction.guild.id)
-                original_value = local_data["local_balance"].get(balance_type, 0)
-                local_data["local_balance"][balance_type] = final_amount
-                icon = ICON_TIEN_SACH if balance_type == "earned" else ICON_TIEN_LAU
+                
+                profile = self.bot.db.get_or_create_user_local_data(user.id, interaction.guild.id)
+                if balance_type == "earned":
+                    original_value = profile['local_balance_earned']
+                    db_balance_type = 'local_balance_earned'
+                    icon = ICON_TIEN_SACH
+                else: # adadd
+                    original_value = profile['local_balance_adadd']
+                    db_balance_type = 'local_balance_adadd'
+                    icon = ICON_TIEN_LAU
+                self.bot.db.update_balance(user.id, interaction.guild.id, db_balance_type, final_amount)
 
             logger.info(f"MODERATOR ACTION: {interaction.user.id} đã set balance '{balance_type}' của {user.id} thành {final_amount}.")
-
             await interaction.followup.send(
                 f"{ICON_SUCCESS} Đã cập nhật thành công!\n"
                 f"  - **Người dùng:** {user.mention}\n"
@@ -150,7 +147,6 @@ class ModToolsSlashCog(commands.Cog, name="Moderator Slash Tools"):
                 f"  - **Giá trị mới:** `{format_large_number(final_amount)}`",
                 ephemeral=True
             )
-
         except Exception as e:
             logger.error(f"Lỗi trong lệnh /mod set balance: {e}", exc_info=True)
             await interaction.followup.send(f"{ICON_ERROR} Đã xảy ra lỗi khi cập nhật dữ liệu.", ephemeral=True)
