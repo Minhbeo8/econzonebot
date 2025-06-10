@@ -1,88 +1,55 @@
-# bot/cogs/tasks/survival_task.py
 import nextcord
 from nextcord.ext import commands, tasks
 import logging
+import os
 
-from core.icons import ICON_WARNING, ICON_ECOIN
+from core.config import (
+    SURVIVAL_TICK_RATE_MINUTES,
+    SURVIVAL_STAT_DECAY,
+    SURVIVAL_HEALTH_REGEN
+)
 
 logger = logging.getLogger(__name__)
 
-# Các hằng số cho sự suy giảm
-HUNGER_DECAY_PER_HOUR = 2
-ENERGY_DECAY_PER_HOUR = 3
-HEALTH_DECAY_WHEN_STARVING = 5
-FAINT_PENALTY_PERCENTAGE = 0.10 # 10%
-
-class SurvivalTaskCog(commands.Cog):
+class SurvivalTaskCog(commands.Cog, name="Survival Task"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.stat_decay_loop.start()
-        logger.info("SurvivalTaskCog (v2 - Refactored) initialized and stat decay task started.")
+        # Chỉ chạy task này nếu bot đang ở chế độ SQLite
+        db_type = getattr(bot, 'db_type', 'json')
+        if db_type == 'sqlite':
+            self.stat_decay_loop.start()
+            logger.info("Survival Task has been started (SQLite mode).")
+        else:
+            logger.info("Survival Task is INACTIVE (not in SQLite mode).")
 
     def cog_unload(self):
-        self.stat_decay_loop.cancel()
-        logger.info("SurvivalTaskCog unloaded and stat decay task cancelled.")
+        """Hủy task khi cog được unload."""
+        if self.stat_decay_loop.is_running():
+            self.stat_decay_loop.cancel()
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=SURVIVAL_TICK_RATE_MINUTES)
     async def stat_decay_loop(self):
         """
-        Tác vụ chạy nền để giảm chỉ số sinh tồn của tất cả người chơi.
+        Task chạy nền để xử lý giảm chỉ số sinh tồn và hồi máu.
         """
-        logger.info("Survival Decay Task: Running...")
-        
+        logger.info("SURVIVAL_TASK: Performing survival stat decay and regen...")
         try:
-            # Sử dụng cache
-            economy_data = self.bot.economy_data
-            users_data = economy_data.get("users", {})
-
-            # Lặp qua tất cả người chơi và tất cả các server họ đã tham gia
-            for user_id, global_profile in users_data.items():
-                for guild_id, local_data in global_profile.get("server_data", {}).items():
-                    
-                    stats = local_data.get("survival_stats")
-                    if not stats:
-                        continue
-
-                    # --- Logic suy giảm ---
-                    stats["hunger"] = max(0, stats["hunger"] - HUNGER_DECAY_PER_HOUR)
-                    stats["energy"] = max(0, stats["energy"] - ENERGY_DECAY_PER_HOUR)
-
-                    # --- Hậu quả khi đói ---
-                    if stats["hunger"] == 0:
-                        stats["health"] = max(0, stats["health"] - HEALTH_DECAY_WHEN_STARVING)
-
-                        # --- Hậu quả khi ngất xỉu ---
-                        if stats["health"] == 0:
-                            earned_balance = local_data["local_balance"]["earned"]
-                            penalty = int(earned_balance * FAINT_PENALTY_PERCENTAGE)
-                            local_data["local_balance"]["earned"] -= penalty
-                            
-                            stats["health"] = 50
-                            stats["hunger"] = 50
-                            stats["energy"] = 50
-
-                            try:
-                                user = await self.bot.fetch_user(int(user_id))
-                                guild = self.bot.get_guild(int(guild_id))
-                                guild_name = guild.name if guild else "không xác định"
-                                
-                                await user.send(
-                                    f"{ICON_WARNING} Bạn đã ngất xỉu vì kiệt sức tại server **{guild_name}**!\n"
-                                    f"Bạn đã bị trừ **{penalty:,}** {ICON_ECOIN} và các chỉ số đã được hồi phục một phần."
-                                )
-                                logger.warning(f"User {user_id} fainted in guild {guild_id}, fined {penalty}.")
-                            except Exception as dm_error:
-                                logger.error(f"Could not send faint DM to {user_id}: {dm_error}")
-
-            # Không cần save, autosave task sẽ lo việc này
-            logger.info("Survival Decay Task: Finished.")
-
+            # Gọi hàm duy nhất để CSDL tự xử lý mọi thứ
+            await self.bot.loop.run_in_executor(
+                None, 
+                self.bot.db.perform_survival_decay, 
+                SURVIVAL_STAT_DECAY, 
+                SURVIVAL_HEALTH_REGEN
+            )
+            logger.info("SURVIVAL_TASK: Stat decay and regen successful.")
         except Exception as e:
             logger.error(f"Error in Survival Decay Task: {e}", exc_info=True)
 
     @stat_decay_loop.before_loop
-    async def before_decay_task(self):
+    async def before_stat_decay_task(self):
+        """Đợi cho đến khi bot sẵn sàng trước khi bắt đầu vòng lặp."""
         await self.bot.wait_until_ready()
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(SurvivalTaskCog(bot))
