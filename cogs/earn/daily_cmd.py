@@ -4,6 +4,7 @@ from nextcord.ext import commands
 import random
 from datetime import datetime
 import logging
+from core.utils import try_send, format_relative_timestamp
 from core.utils import try_send
 from core.config import DAILY_COOLDOWN
 from core.leveling import check_and_process_levelup
@@ -26,9 +27,11 @@ class DailyCommandCog(commands.Cog, name="Daily Command"):
             now = datetime.now().timestamp()
             last_daily = self.bot.db.get_cooldown(author_id, 'daily')
             
-            if now - last_daily < DAILY_COOLDOWN:
-                time_left = str(datetime.fromtimestamp(last_daily + DAILY_COOLDOWN) - datetime.now()).split('.')[0]
-                await try_send(ctx, content=f"{ICON_LOADING} Bạn đã nhận thưởng ngày hôm nay rồi! Chờ: **{time_left}**.")
+            if now < last_daily + DAILY_COOLDOWN:
+                cooldown_end_timestamp = last_daily + DAILY_COOLDOWN             
+                relative_time_str = format_relative_timestamp(cooldown_end_timestamp)
+                
+                await try_send(ctx, content=f"{ICON_LOADING} Bạn đã nhận thưởng ngày hôm nay rồi! Hãy quay lại sau ({relative_time_str}).")
                 return
             
             local_data = self.bot.db.get_or_create_user_local_data(author_id, guild_id)
