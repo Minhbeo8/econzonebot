@@ -3,7 +3,7 @@ from nextcord.ext import commands
 import logging
 
 # Sửa dòng này để import từ file CSDL mới
-from .database_sqlite import load_moderator_ids
+from .moderation_manager import load_moderator_ids
 
 logger = logging.getLogger(__name__)
 
