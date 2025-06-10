@@ -1,36 +1,37 @@
-# bot/core/checks.py
 import nextcord
 from nextcord.ext import commands
+import logging
 
-from .database import load_moderator_ids
-from .config import MODERATOR_USER_IDS
-from .icons import ICON_ERROR
+# Sửa dòng này để import từ file CSDL mới
+from .database_sqlite import load_moderator_ids
 
-async def check_is_bot_moderator_interaction(interaction: nextcord.Interaction) -> bool:
-    """Kiểm tra quyền Moderator/Owner cho lệnh slash."""
-    user_is_mod = interaction.user.id in load_moderator_ids()
-    user_is_owner = await interaction.client.is_owner(interaction.user)
+logger = logging.getLogger(__name__)
 
-    is_authorized = user_is_mod or user_is_owner
+# Tải danh sách ID của moderator một lần khi module được load
+MODERATOR_IDS = load_moderator_ids()
+if MODERATOR_IDS:
+    logger.info(f"Đã tải {len(MODERATOR_IDS)} moderator ID.")
+else:
+    logger.warning("Không có moderator ID nào được tải. File moderators.json có thể bị trống hoặc lỗi.")
 
-    if not is_authorized:
-        try:
-            await interaction.response.send_message(
-                f"{ICON_ERROR} Bạn không có đủ quyền (Moderator/Owner) để sử dụng lệnh này.", 
-                ephemeral=True
-            )
-        except Exception:
-            pass # Bỏ qua nếu không thể gửi tin nhắn
+def is_bot_moderator(user: nextcord.User) -> bool:
+    """Kiểm tra xem một user có phải là moderator của bot hay không."""
+    return user.id in MODERATOR_IDS
 
-    return is_authorized
+def check_is_bot_moderator(ctx: commands.Context) -> bool:
+    """Check decorator cho các lệnh prefix."""
+    return is_bot_moderator(ctx.author)
 
-def is_bot_moderator(ctx: commands.Context) -> bool:
-    """Kiểm tra quyền Moderator/Owner cho lệnh prefix."""
-    moderator_ids = load_moderator_ids()
-    return ctx.author.id in moderator_ids or ctx.author.id in MODERATOR_USER_IDS
+def check_is_bot_moderator_interaction(interaction: nextcord.Interaction) -> bool:
+    """Check decorator cho các lệnh slash."""
+    return is_bot_moderator(interaction.user)
+
+def is_guild_owner(ctx: commands.Context) -> bool:
+    """Kiểm tra xem người dùng có phải là chủ server hay không."""
+    return ctx.author.id == ctx.guild.owner_id
 
 def is_guild_owner_check(ctx: commands.Context) -> bool:
-    """Kiểm tra người dùng có phải là chủ server không."""
+    """Check decorator cho lệnh prefix của chủ server."""
     if not ctx.guild:
         return False
-    return ctx.author.id == ctx.guild.owner_id
+    return is_guild_owner(ctx)
