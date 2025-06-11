@@ -1,59 +1,80 @@
-# bot/cogs/economy/launder_cmd.py
 import nextcord
 from nextcord.ext import commands
-import random
 import logging
-from datetime import datetime
-from core.utils import try_send, require_travel_check
-from core.config import LAUNDER_EXCHANGE_RATE, BASE_CATCH_CHANCE, WANTED_LEVEL_CATCH_MULTIPLIER
-from core.icons import ICON_ERROR, ICON_SUCCESS, ICON_WARNING, ICON_BANK_MAIN, ICON_ECOBIT, ICON_ECOIN, ICON_INFO
+
+from core.checks import require_travel_check
+from core.config import LAUNDER_TAX_RATE
+from core.utils import format_large_number
+from core.icons import ICON_ECOIN, ICON_ECOBIT, ICON_SUCCESS, ICON_ERROR
 
 logger = logging.getLogger(__name__)
 
-class LaunderCommandCog(commands.Cog, name="Launder Command"):
+class LaunderCommandCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        logger.info("LaunderCommandCog (SQLite Ready) initialized.")
 
-    @commands.command(name="launder")
+    @commands.command(name="launder", aliases=["ruatien"])
     @commands.guild_only()
     @require_travel_check
-    async def launder(self, ctx: commands.Context, amount: int):
-        author_id = ctx.author.id
+    async def launder(self, ctx: commands.Context, *, amount_str: str):
+        """Rửa tiền Ecobit bẩn thành Ecoin sạch, có mất phí."""
+        user_id = ctx.author.id
         guild_id = ctx.guild.id
 
-        if amount <= 0:
-            await try_send(ctx, content=f"{ICON_ERROR} Số tiền cần rửa phải lớn hơn 0.")
-            return
-            
+        local_data = self.bot.db.get_or_create_user_local_data(user_id, guild_id)
+        ecobit_balance = local_data['local_balance_adadd']
+        
+        # SỬA: Xử lý và chuyển đổi đầu vào 'amount_str'
         try:
-            global_profile = self.bot.db.get_or_create_global_user_profile(author_id)
-            local_data = self.bot.db.get_or_create_user_local_data(author_id, guild_id)
-            
-            if local_data['local_balance_adadd'] < amount:
-                await try_send(ctx, content=f"{ICON_ERROR} Bạn không có đủ {amount:,} 🧪Ecobit để thực hiện.")
-                return
-
-            wanted_level = global_profile['wanted_level']
-            catch_chance = min(0.9, BASE_CATCH_CHANCE + wanted_level * WANTED_LEVEL_CATCH_MULTIPLIER)
-            self.bot.db.set_cooldown(author_id, "launder", datetime.now().timestamp())
-
-            if random.random() < catch_chance:
-                fine_amount = min(local_data['local_balance_earned'], int(amount * 0.1))
-                self.bot.db.update_balance(author_id, guild_id, 'local_balance_adadd', 0)
-                self.bot.db.update_balance(author_id, guild_id, 'local_balance_earned', local_data['local_balance_earned'] - fine_amount)
-                self.bot.db.update_wanted_level(author_id, wanted_level + 1.0)
-                await try_send(ctx, content=f"🚨 **BỊ BẮT!** Toàn bộ {local_data['local_balance_adadd']:,} {ICON_ECOBIT} của bạn đã bị tịch thu và bạn bị phạt thêm **{fine_amount:,}** {ICON_ECOIN}.")
+            if amount_str.lower() == 'all':
+                amount_to_launder = ecobit_balance
             else:
-                bank_gained = amount // LAUNDER_EXCHANGE_RATE
-                self.bot.db.update_balance(author_id, guild_id, 'local_balance_adadd', local_data['local_balance_adadd'] - amount)
-                self.bot.db.update_balance(author_id, None, 'bank_balance', global_profile['bank_balance'] + bank_gained)
-                self.bot.db.update_wanted_level(author_id, max(0.0, wanted_level - 0.25))
-                await try_send(ctx, content=f"{ICON_SUCCESS} Giao dịch mờ ám thành công! Bạn đã chi **{amount:,}** {ICON_ECOBIT} và nhận lại được **{bank_gained:,}** {ICON_BANK_MAIN}.")
+                amount_to_launder = int(amount_str)
+        except ValueError:
+            await ctx.send(f"{ICON_ERROR} Vui lòng nhập một số tiền hợp lệ hoặc 'all'.")
+            return
 
-        except Exception as e:
-            logger.error(f"Lỗi trong lệnh 'launder': {e}", exc_info=True)
-            await try_send(ctx, content=f"{ICON_ERROR} Giao dịch gặp trục trặc không mong muốn.")
+        if ecobit_balance <= 0:
+            await ctx.send(f"{ICON_ERROR} Bạn không có {ICON_ECOBIT} **Ecobit** nào để rửa.")
+            return
+
+        if amount_to_launder <= 0:
+            await ctx.send(f"{ICON_ERROR} Số tiền cần rửa phải lớn hơn 0.")
+            return
+
+        if amount_to_launder > ecobit_balance:
+            await ctx.send(f"{ICON_ERROR} Bạn không có đủ **{format_large_number(amount_to_launder)}** {ICON_ECOBIT} **Ecobit** để rửa. Bạn chỉ có **{format_large_number(ecobit_balance)}**.")
+            return
+
+        tax = int(amount_to_launder * LAUNDER_TAX_RATE)
+        amount_received = amount_to_launder - tax
+
+        # Cập nhật CSDL
+        self.bot.db.update_local_balance(user_id, guild_id, 'local_balance_adadd', -amount_to_launder)
+        self.bot.db.update_local_balance(user_id, guild_id, 'local_balance_earned', amount_received)
+        
+        logger.info(f"User {user_id} in guild {guild_id} laundered {amount_to_launder} ecobits, paid {tax} tax, received {amount_received} ecoins.")
+
+        embed = nextcord.Embed(
+            title="✅ Giao Dịch Rửa Tiền Thành Công",
+            description=(
+                f"Bạn đã rửa thành công **{format_large_number(amount_to_launder)}** {ICON_ECOBIT} **Ecobit**.\n"
+                f"Sau khi trừ đi **{LAUNDER_TAX_RATE * 100:.0f}%** phí, bạn nhận được **{format_large_number(amount_received)}** {ICON_ECOIN} **Ecoin**."
+            ),
+            color=nextcord.Color.green()
+        )
+        await ctx.send(embed=embed)
+
+    @launder.error
+    async def launder_error(self, ctx: commands.Context, error):
+        """Xử lý lỗi riêng cho lệnh launder."""
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"{ICON_ERROR} Bạn chưa nhập số tiền cần rửa. \n**Cách dùng:** `{self.bot.command_prefix}launder <số_tiền|all>`")
+        else:
+            # Đối với các lỗi khác, log lại để debug
+            logger.error(f"Lỗi không xác định trong lệnh launder: {error}", exc_info=True)
+            await ctx.send(f"{ICON_ERROR} Đã có lỗi xảy ra. Vui lòng thử lại sau.")
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(LaunderCommandCog(bot))
