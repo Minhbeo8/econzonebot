@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Union
 import json
 from datetime import datetime, timedelta
-from fuzzywuzzy import process
+from rapidfuzz import fuzz
 logger = logging.getLogger(__name__)
 
 async def try_send(
