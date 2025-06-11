@@ -73,6 +73,7 @@ INITIAL_COGS = [
     # Tasks
     "cogs.tasks.dynamic_shop_task",
     "cogs.tasks.survival_task",
+    "cogs.tasks.gdrive_backup_task",
     
     # Test
     "cogs.test_slash_cog",
