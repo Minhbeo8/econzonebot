@@ -6,7 +6,7 @@ import asyncio
 
 from core.utils import try_send, format_large_number, find_best_match
 from core.config import BASE_CATCH_CHANCE, WANTED_LEVEL_CATCH_MULTIPLIER
-from core.icons import ICON_SUCCESS, ICON_ERROR, ICON_WARNING, ICON_ECOIN, ICON_ECOBIT
+from core.icons import ICON_SUCCESS, ICON_ERROR, ICON_WARNING, ICON_ECOIN, ICON_ECOBIT, ICON_INFO
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,6 @@ class PurchaseConfirmationView(nextcord.ui.View):
         self.interaction_user = ctx.author
         self.message = None
 
-        # Tạo các nút bấm dựa trên các lựa chọn thanh toán
         for option in payment_options:
             button = nextcord.ui.Button(
                 label=option["label"],
@@ -33,52 +32,50 @@ class PurchaseConfirmationView(nextcord.ui.View):
             self.add_item(button)
 
     async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
-        """Chỉ cho phép người dùng ban đầu tương tác."""
         if interaction.user.id != self.interaction_user.id:
             await interaction.response.send_message("Đây không phải là giao dịch của bạn!", ephemeral=True)
             return False
         return True
     
     def create_callback(self, payment_id):
-        """Tạo hàm callback động cho mỗi nút bấm."""
         async def callback(interaction: nextcord.Interaction):
             await interaction.response.defer()
             await self.buy_cog.process_payment(self, interaction, payment_id)
         return callback
 
     async def on_timeout(self):
-        """Xử lý khi View hết hạn."""
         if self.message:
-            # Vô hiệu hóa tất cả các nút
             for item in self.children:
                 item.disabled = True
             try:
                 await self.message.edit(content="⏳ Giao dịch đã hết hạn.", view=self)
             except nextcord.NotFound:
-                return 
-           
+                return
+
             await asyncio.sleep(60)
 
-            
             try:
                 await self.message.delete()
             except nextcord.NotFound:
-                pass 
+                pass
+
+class BuyCommandCog(commands.Cog, name="Buy Command"):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        logger.info("BuyCommandCog (Full Update) initialized.")
+
     @commands.command(name='buy')
     @commands.guild_only()
     async def buy(self, ctx: commands.Context, item_id: str, quantity: int = 1):
-        """Mua một vật phẩm từ cửa hàng."""
         item_id_to_buy = item_id.lower().strip()
 
         if quantity <= 0:
             await try_send(ctx, content=f"{ICON_ERROR} Số lượng mua phải lớn hơn 0.")
             return
         
-        
         all_item_ids = list(self.bot.item_definitions.keys())
         
         if item_id_to_buy not in all_item_ids:
-            
             best_match = find_best_match(item_id_to_buy, all_item_ids)
             if best_match:
                 await try_send(ctx, content=f"{ICON_WARNING} Không tìm thấy vật phẩm `{item_id_to_buy}`. Có phải bạn muốn nói: `{best_match}`?")
@@ -86,7 +83,6 @@ class PurchaseConfirmationView(nextcord.ui.View):
                 await try_send(ctx, content=f"{ICON_ERROR} Vật phẩm `{item_id_to_buy}` không tồn tại.")
             return
 
-        # Phần còn lại của logic giữ nguyên
         item_details = self.bot.item_definitions[item_id_to_buy]
         price = item_details.get("price")
         if not price:
@@ -94,8 +90,8 @@ class PurchaseConfirmationView(nextcord.ui.View):
             return
 
         total_cost = price * quantity
+        local_data = self.bot.db.get_or_create_user_local_data(ctx.author.id, ctx.guild.id)
         
-        # Chuẩn bị các tùy chọn thanh toán
         payment_options = []
         earned_balance = local_data["local_balance_earned"]
         payment_options.append({
@@ -114,16 +110,16 @@ class PurchaseConfirmationView(nextcord.ui.View):
         })
 
         if all(opt['disabled'] for opt in payment_options):
-            await try_send(ctx, content=f"{ICON_ERROR} Bạn không có đủ tiền để mua vật phẩm này.")
+            await try_send(ctx, content=f"{ICON_ERROR} Bạn không có đủ tiền để mua vật phẩm này với giá **{total_cost:,}**.")
             return
 
         view = PurchaseConfirmationView(ctx, self, item_id_to_buy, quantity, total_cost, payment_options)
-        msg = await try_send(ctx, content=f"Xác nhận mua **{quantity}x {item_details['name']}** với giá **{total_cost:,}**.\nVui lòng chọn nguồn tiền thanh toán:", view=view)
+        msg_content = f"Xác nhận mua **{quantity}x {item_details['name']}** với giá **{total_cost:,}**.\nVui lòng chọn nguồn tiền thanh toán:"
+        msg = await try_send(ctx, content=msg_content, view=view)
         if msg:
             view.message = msg
 
     async def process_payment(self, view: PurchaseConfirmationView, interaction: nextcord.Interaction, payment_type: str):
-        """Hàm xử lý logic thanh toán sau khi người dùng nhấn nút."""
         author_id = view.ctx.author.id
         guild_id = view.ctx.guild.id
         item_id = view.item_id
