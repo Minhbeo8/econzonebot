@@ -1,4 +1,3 @@
-# bot/cogs/earn/work_cmd.py
 import nextcord
 from nextcord.ext import commands
 import random
@@ -6,11 +5,16 @@ from datetime import datetime
 import logging
 
 from core.utils import try_send, require_travel_check
-from core.config import WORK_COOLDOWN, WORK_ENERGY_COST, WORK_HUNGER_COST
+# SỬA: Import các biến cấu hình mới và đầy đủ
+from core.config import (
+    WORK_COOLDOWN, WORK_ENERGY_COST, WORK_HUNGER_COST,
+    WORK_PAYOUT_MIN, WORK_PAYOUT_MAX, WORK_XP_LOCAL_MIN, WORK_XP_LOCAL_MAX,
+    WORK_XP_GLOBAL_MIN, WORK_XP_GLOBAL_MAX
+)
 from core.leveling import check_and_process_levelup
 from core.icons import (
     ICON_LOADING, ICON_WORK, ICON_MONEY_BAG, ICON_ERROR, 
-    ICON_ECOIN, ICON_SURVIVAL
+    ICON_ECOIN, ICON_SURVIVAL, ICON_XP
 )
 
 logger = logging.getLogger(__name__)
@@ -39,16 +43,17 @@ class WorkCommandCog(commands.Cog, name="Work Command"):
 
             now = datetime.now().timestamp()
             last_work = self.bot.db.get_cooldown(author_id, 'work')
-            if now - last_work < WORK_COOLDOWN:
+            if last_work and now - last_work < WORK_COOLDOWN:
                 time_left = str(datetime.fromtimestamp(last_work + WORK_COOLDOWN) - datetime.now()).split('.')[0]
                 await try_send(ctx, content=f"{ICON_LOADING} Bạn cần nghỉ ngơi! Chờ: **{time_left}**.")
                 return
             
-            earnings = random.randint(150, 500)
-            xp_earned_local = random.randint(5, 20)
-            xp_earned_global = random.randint(10, 30)
+            # SỬA: Lấy giá trị ngẫu nhiên từ config
+            earnings = random.randint(WORK_PAYOUT_MIN, WORK_PAYOUT_MAX)
+            xp_earned_local = random.randint(WORK_XP_LOCAL_MIN, WORK_XP_LOCAL_MAX)
+            xp_earned_global = random.randint(WORK_XP_GLOBAL_MIN, WORK_XP_GLOBAL_MAX)
             
-            self.bot.db.update_balance(author_id, guild_id, 'local_balance_earned', local_data['local_balance_earned'] + earnings)
+            self.bot.db.update_local_balance(author_id, guild_id, 'local_balance_earned', local_data['local_balance_earned'] + earnings)
             self.bot.db.update_xp(author_id, guild_id, xp_earned_local, xp_earned_global)
             self.bot.db.set_cooldown(author_id, 'work', now)
             self.bot.db.update_user_stats(author_id, guild_id, energy=local_data['energy'] - WORK_ENERGY_COST, hunger=local_data['hunger'] - WORK_HUNGER_COST)
@@ -58,7 +63,7 @@ class WorkCommandCog(commands.Cog, name="Work Command"):
                 content=(
                     f"{ICON_WORK} {ctx.author.mention}, bạn làm việc chăm chỉ và nhận được:\n"
                     f"  {ICON_ECOIN} **{earnings:,}** Ecoin\n"
-                    f"  ✨ **{xp_earned_local}** XP (Server) & **{xp_earned_global}** XP (Global)"
+                    f"  {ICON_XP} **{xp_earned_local}** XP (Server) & **{xp_earned_global}** XP (Global)"
                 )
             )
 
