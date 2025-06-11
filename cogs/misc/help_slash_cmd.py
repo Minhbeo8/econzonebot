@@ -60,15 +60,22 @@ class HelpMenuView(nextcord.ui.View):
 
 
         except Exception as e:
-            logger.error(f"Lỗi trong callback của HelpMenuView: {e}", exc_info=True)
+            logger.error(f"Lỗi trong callback của HelpMenuView: {e}", exc_info=True)    
 
-    def _create_main_embed(self) -> nextcord.Embed:
-        """Tạo embed cho trang chính."""
-        return nextcord.Embed(
-            title=f"{ICON_HELP} Menu Trợ giúp",
-            description="Chào mừng đến với EconZone! Vui lòng chọn một mục từ menu bên dưới để xem chi tiết các lệnh.",
-            color=nextcord.Color.blue()
-        ).set_footer(text="Bot được phát triển bởi minhbeo8")
+    def _create_main_embed_from_cog(self) -> nextcord.Embed:
+        embed = nextcord.Embed(
+            title=f"{ICON_HELP} Menu Trợ giúp - Bot Kinh Tế",
+            description="Chào mừng bạn đến với Bot Kinh Tế! Dưới đây là các lệnh bạn có thể sử dụng.",
+            color=nextcord.Color.dark_theme(),
+        )
+        for cog_info in self.cogs_data:
+            commands_str = " ".join([f"`{cmd}`" for cmd in cog_info["commands"]])
+            
+            if commands_str: 
+                embed.add_field(name=f"{cog_info['emoji']} {cog_info['name']}", value=commands_str, inline=False)
+        
+        embed.set_footer(text="Chọn một mục từ menu dropdown để xem chi tiết.")
+        return embed
 
     def _create_cog_embed(self, cog_info: Dict[str, Any]) -> nextcord.Embed:
         """Tạo embed chi tiết cho một danh mục lệnh."""
