@@ -25,33 +25,24 @@ CF_COOLDOWN = 5
 DICE_COOLDOWN = 5
 
 # --- Cân bằng Kinh tế & Game ---
-
-# Lệnh work
+# (Các cấu hình game khác giữ nguyên...)
 WORK_PAYOUT_MIN = 150
 WORK_PAYOUT_MAX = 500
 WORK_XP_LOCAL_MIN = 5
 WORK_XP_LOCAL_MAX = 20
 WORK_XP_GLOBAL_MIN = 10
 WORK_XP_GLOBAL_MAX = 30
-
-# Lệnh daily
 DAILY_REWARD_MIN = 500
 DAILY_REWARD_MAX = 1500
 DAILY_XP_LOCAL_MIN = 15
 DAILY_XP_LOCAL_MAX = 50
 DAILY_XP_GLOBAL_MIN = 25
 DAILY_XP_GLOBAL_MAX = 75
-
-# Lệnh beg
 BEG_SUCCESS_RATE = 0.7
 BEG_REWARD_MIN = 10
 BEG_REWARD_MAX = 100
-
-# Lệnh launder (rửa tiền)
 LAUNDER_TAX_RATE_MIN = 0.15
 LAUNDER_TAX_RATE_MAX = 0.50
-
-# Các thông số khác
 DEPOSIT_FEE_PERCENTAGE = 0.05
 UPGRADE_VISA_COST = 20000
 CRIME_SUCCESS_RATE = 0.60
@@ -60,8 +51,6 @@ ROB_FINE_RATE = 0.25
 BASE_CATCH_CHANCE = 0.1
 WANTED_LEVEL_CATCH_MULTIPLIER = 0.05
 WANTED_LEVEL_CRIMINAL_THRESHOLD = 5.0
-
-# THÊM LẠI: Cấu hình bán vật phẩm
 TAINTED_ITEM_SELL_LIMIT = 2
 TAINTED_ITEM_SELL_RATE = 0.2
 TAINTED_ITEM_TAX_RATE = 0.4
@@ -87,3 +76,37 @@ CITIZEN_TITLES = { 0: "Công Dân", 10: "Người Có Tiếng Tăm", 25: "Nhân 
 CRIMINAL_TITLES = { 0: "Tội Phạm Vặt", 10: "Kẻ Ngoài Vòng Pháp Luật", 25: "Trùm Tội Phạm", 50: "Bố Già" }
 SLOTS_EMOJIS = ["🍒", "🍊", "🍋", "🔔", "⭐", "💎"]
 FISH_CATCHES = { "🐠": 50, "🐟": 75, "🐡": 100, "🦑": 150, "🦐": 30, "🦀": 60, "👢": 5, "🔩": 1, "🪵": 10 }
+
+# --- SỬA: Ánh xạ Lệnh không cần Prefix (Phím tắt) ---
+BARE_COMMAND_MAP = {
+    # Tài Khoản & Tổng Quan
+    "balance": "balance", "bal": "balance",
+    "bank": "bank",
+    "deposit": "deposit", "dep": "deposit",
+    "withdraw": "withdraw", "wd": "withdraw",
+    "transfer": "transfer", "tf": "transfer",
+    "leaderboard": "leaderboard", "lb": "leaderboard",
+    "inventory": "inventory", "inv": "inventory",
+    "visa": "visa",
+    "howtoplay": "howtoplay", "h": "howtoplay", "guide": "howtoplay",
+
+    # Kiếm Tiền & Cơ Hội
+    "work": "work", "w": "work",
+    "daily": "daily", "d": "daily",
+    "beg": "beg", "b": "beg",
+    "crime": "crime",
+    "fish": "fish",
+    "rob": "rob",
+    "launder": "launder", "ruatien": "launder",
+
+    # Giải Trí & Cờ Bạc
+    "slots": "slots", "sl": "slots",
+    "coinflip": "coinflip", "cf": "coinflip",
+    "dice": "dice", "roll": "dice",
+
+    # Cửa Hàng Vật Phẩm
+    "shop": "shop", "store": "shop",
+    "buy": "buy",
+    "sell": "sell",
+    "use": "use"
+}
