@@ -3,13 +3,13 @@ import nextcord
 import os
 from dotenv import load_dotenv 
 
-# Tải biến môi trường từ .env hoặc Secrets của Replit
+# Tải biến môi trường từ .env hoặc Secrets
 load_dotenv() 
 
 import logging
 import threading
 
-# Import hàm chạy dashboard và đối tượng bot
+# Import các thành phần cần thiết
 from dashboard import run_flask_app
 from core.bot import bot, load_all_cogs 
 from core.logger import setup_logging 
@@ -31,6 +31,7 @@ if __name__ == "__main__":
     # Gán thẳng CSDL SQLite và khởi tạo
     main_logger.info("Bot đang chạy với CSDL SQLite.")
     bot.db = db_sqlite
+    bot.db_type = 'sqlite' # Gán thuộc tính để các hàm khác có thể nhận biết
     try:
         bot.db.initialize_database()
     except Exception as e:
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     # Tải Bot Token từ biến môi trường
     actual_bot_token = os.getenv("BOT_TOKEN")
     if not actual_bot_token:
-        main_logger.critical("CRITICAL: BOT_TOKEN không được tìm thấy trong Secrets!")
+        main_logger.critical("CRITICAL: BOT_TOKEN không được tìm thấy!")
         sys.exit(1) 
     else:
         main_logger.info("BOT_TOKEN đã được tải thành công.")
@@ -61,6 +62,21 @@ if __name__ == "__main__":
     except Exception as e:
         main_logger.critical(f"Không thể tải Cogs: {e}", exc_info=True)
     
+    # Sự kiện tự động sao lưu lần cuối khi bot tắt
+    @bot.event
+    async def on_close():
+        """Sự kiện này chạy khi bot đang trong quá trình tắt."""
+        main_logger.info("Bot is shutting down. Performing one final database sync...")
+        sync_cog = bot.get_cog("Database Sync Task")
+        if sync_cog and hasattr(sync_cog, 'force_sync'):
+            try:
+                await sync_cog.force_sync()
+                main_logger.info("Final database sync successful.")
+            except Exception as e:
+                main_logger.error(f"Final database sync failed: {e}")
+        else:
+            main_logger.warning("Could not find sync cog to perform final sync.")
+
     # Chạy bot và kết nối tới Discord
     main_logger.info("Đang cố gắng kết nối với Discord...")
     try:
@@ -72,7 +88,6 @@ if __name__ == "__main__":
     except Exception as e:
         main_logger.critical(f"LỖI KHÔNG XÁC ĐỊNH KHI CHẠY BOT: {type(e).__name__} - {e}", exc_info=True)
     finally:
-        # Không cần lưu file JSON nữa
         main_logger.info("==================================================")
         main_logger.info("Bot đã dừng hoạt động.")
         main_logger.info("==================================================")
