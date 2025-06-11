@@ -4,7 +4,7 @@ import logging
 import random
 import asyncio
 
-from core.utils import try_send, format_large_number
+from core.utils import try_send, format_large_number, find_best_match
 from core.config import BASE_CATCH_CHANCE, WANTED_LEVEL_CATCH_MULTIPLIER
 from core.icons import ICON_SUCCESS, ICON_ERROR, ICON_WARNING, ICON_ECOIN, ICON_ECOBIT
 
@@ -53,25 +53,17 @@ class PurchaseConfirmationView(nextcord.ui.View):
             for item in self.children:
                 item.disabled = True
             try:
-                # Sửa tin nhắn để thông báo hết hạn
                 await self.message.edit(content="⏳ Giao dịch đã hết hạn.", view=self)
             except nextcord.NotFound:
-                return # Tin nhắn đã bị xóa, không cần làm gì
-
-            # Đợi thêm 60 giây
+                return 
+           
             await asyncio.sleep(60)
 
-            # Xóa tin nhắn để dọn dẹp kênh chat
+            
             try:
                 await self.message.delete()
             except nextcord.NotFound:
-                pass # Bỏ qua nếu tin nhắn đã bị xóa trong lúc chờ
-
-class BuyCommandCog(commands.Cog, name="Buy Command"):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        logger.info("BuyCommandCog (SQLite Ready) initialized.")
-
+                pass 
     @commands.command(name='buy')
     @commands.guild_only()
     async def buy(self, ctx: commands.Context, item_id: str, quantity: int = 1):
@@ -82,19 +74,26 @@ class BuyCommandCog(commands.Cog, name="Buy Command"):
             await try_send(ctx, content=f"{ICON_ERROR} Số lượng mua phải lớn hơn 0.")
             return
         
-        if item_id_to_buy not in self.bot.item_definitions:
-            await try_send(ctx, content=f"{ICON_ERROR} Vật phẩm `{item_id}` không tồn tại.")
+        
+        all_item_ids = list(self.bot.item_definitions.keys())
+        
+        if item_id_to_buy not in all_item_ids:
+            
+            best_match = find_best_match(item_id_to_buy, all_item_ids)
+            if best_match:
+                await try_send(ctx, content=f"{ICON_WARNING} Không tìm thấy vật phẩm `{item_id_to_buy}`. Có phải bạn muốn nói: `{best_match}`?")
+            else:
+                await try_send(ctx, content=f"{ICON_ERROR} Vật phẩm `{item_id_to_buy}` không tồn tại.")
             return
 
+        # Phần còn lại của logic giữ nguyên
         item_details = self.bot.item_definitions[item_id_to_buy]
         price = item_details.get("price")
         if not price:
-            await try_send(ctx, content=f"{ICON_INFO} Vật phẩm `{item_id}` không thể mua được.")
+            await try_send(ctx, content=f"{ICON_INFO} Vật phẩm `{item_id_to_buy}` không thể mua được.")
             return
 
         total_cost = price * quantity
-
-        local_data = self.bot.db.get_or_create_user_local_data(ctx.author.id, ctx.guild.id)
         
         # Chuẩn bị các tùy chọn thanh toán
         payment_options = []
