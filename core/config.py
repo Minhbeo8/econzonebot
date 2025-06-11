@@ -1,44 +1,73 @@
-# bot/core/config.py
-BOT_OWNER_IDS = [1370417047070048276] # <--- Thay bằng ID của bạn
+import os
+from dotenv import load_dotenv
 
-# --- Cấu hình Chung ---
+# Tải các biến môi trường từ file .env
+load_dotenv()
+
+# --- Cấu hình Xác thực & API ---
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
+# --- Cấu hình Bot cơ bản ---
 COMMAND_PREFIX = "!"
-# ... (các biến config khác đã có) ...
-# --- Bot Configuration ---
-COMMAND_PREFIX = '!'
-ECONOMY_FILE = 'economy.json'
-MODERATORS_FILE = 'moderators.json'
-ITEMS_FILE = 'items.json'
+BOT_OWNER_IDS = [1370417047070048276] # ID của chủ sở hữu bot
 
-# --- Cooldowns (seconds) ---
-WORK_COOLDOWN = 3600
-DAILY_COOLDOWN = 86400
-CRIME_COOLDOWN = 1800
-BEG_COOLDOWN = 300
-FISH_COOLDOWN = 600
-ROB_COOLDOWN = 7200
+# --- Thời gian chờ (giây) ---
+WORK_COOLDOWN = 3600    # 1 giờ
+DAILY_COOLDOWN = 86400  # 24 giờ
+CRIME_COOLDOWN = 1800   # 30 phút
+BEG_COOLDOWN = 300      # 5 phút
+FISH_COOLDOWN = 600     # 10 phút
+ROB_COOLDOWN = 7200     # 2 giờ
 SLOTS_COOLDOWN = 5
 CF_COOLDOWN = 5
 DICE_COOLDOWN = 5
 
-# --- Economy & Game Balance ---
+# --- Cân bằng Kinh tế & Game ---
+
+# Lệnh work
+WORK_PAYOUT_MIN = 80
+WORK_PAYOUT_MAX = 250
+
+# Lệnh daily
+DAILY_REWARD_MIN = 400
+DAILY_REWARD_MAX = 1000
+
+# Lệnh beg
+BEG_REWARD_MIN = 1
+BEG_REWARD_MAX = 50
+
+# Lệnh launder (rửa tiền)
+LAUNDER_TAX_RATE_MIN = 0.15  # Tỉ lệ thuế tối thiểu (15%)
+LAUNDER_TAX_RATE_MAX = 0.50  # Tỉ lệ thuế tối đa (50%)
+
+# Các thông số khác
 DEPOSIT_FEE_PERCENTAGE = 0.05
 UPGRADE_VISA_COST = 20000
-TAINTED_ITEM_SELL_LIMIT = 2
-TAINTED_ITEM_SELL_RATE = 0.2
-TAINTED_ITEM_TAX_RATE = 0.4
-# [SỬA] Đổi 'rate' thành 'RATE' để nhất quán
-LAUNDER_EXCHANGE_RATE = 100_000_000
-FOREIGN_ITEM_SELL_PENALTY = 0.5
 CRIME_SUCCESS_RATE = 0.60
 ROB_SUCCESS_RATE = 0.50
 ROB_FINE_RATE = 0.25
 BASE_CATCH_CHANCE = 0.1
 WANTED_LEVEL_CATCH_MULTIPLIER = 0.05
-
-MODERATOR_USER_IDS = [] 
 WANTED_LEVEL_CRIMINAL_THRESHOLD = 5.0
 
+# --- Chi phí Sinh tồn ---
+WORK_ENERGY_COST = 10
+WORK_HUNGER_COST = 5
+CRIME_ENERGY_COST = 8
+CRIME_HUNGER_COST = 4
+ROB_ENERGY_COST = 12
+ROB_HUNGER_COST = 6
+FISH_ENERGY_COST = 5
+FISH_HUNGER_COST = 3
+
+# --- Cấu hình Tác vụ Sinh tồn ---
+SURVIVAL_TICK_RATE_MINUTES = 20
+SURVIVAL_STAT_DECAY = 1
+SURVIVAL_HEALTH_REGEN = 2
+
+# --- Dữ liệu Game (ít thay đổi) ---
 CITIZEN_TITLES = {
     0: "Công Dân",
     10: "Người Có Tiếng Tăm",
@@ -53,62 +82,8 @@ CRIMINAL_TITLES = {
     50: "Bố Già"
 }
 
-# --- Survival Stats Costs ---
-WORK_ENERGY_COST = 10
-WORK_HUNGER_COST = 5
-CRIME_ENERGY_COST = 8
-CRIME_HUNGER_COST = 4
-ROB_ENERGY_COST = 12
-ROB_HUNGER_COST = 6
-FISH_ENERGY_COST = 5
-FISH_HUNGER_COST = 3
-
-# --- Game Specifics ---
 SLOTS_EMOJIS = ["🍒", "🍊", "🍋", "🔔", "⭐", "💎"]
 FISH_CATCHES = {
     "🐠": 50, "🐟": 75, "🐡": 100, "🦑": 150, "🦐": 30, "🦀": 60,
     "👢": 5, "🔩": 1, "🪵": 10
 }
-
-# --- Bare Command Mapping ---
-BARE_COMMAND_MAP = {
-    # Tài Khoản & Tổng Quan
-    "balance": "balance", "bal": "balance",
-    "bank": "bank",
-    "deposit": "deposit", "dep": "deposit",
-    "withdraw": "withdraw", "wd": "withdraw",
-    "transfer": "transfer", "tf": "transfer",
-    "leaderboard": "leaderboard", "lb": "leaderboard",
-    "inventory": "inventory", "inv": "inventory",
-    "visa": "visa",
-
-    # Kiếm Tiền & Cơ Hội
-    "work": "work", "w": "work",
-    "daily": "daily",
-
-    "beg": "beg",
-    "crime": "crime",
-    "fish": "fish",
-    "rob": "rob",
-
-    # Giải Trí & Cờ Bạc
-    "slots": "slots", "sl": "slots",
-    "coinflip": "coinflip", "cf": "coinflip",
-    "dice": "dice", "roll": "dice",
-
-    # Cửa Hàng Vật Phẩm
-    "shop": "shop", "store": "shop",
-    "buy": "buy",
-    "sell": "sell",
-    "use": "use"
-}
-
-# --- Cấu hình cho Tác vụ Sinh tồn (Survival Task) ---
-# Tần suất chạy tác vụ (đơn vị: phút)
-SURVIVAL_TICK_RATE_MINUTES = 20
-
-# Lượng chỉ số bị giảm mỗi lần chạy
-SURVIVAL_STAT_DECAY = 1
-
-# Lượng máu được hồi lại nếu đủ điều kiện (độ no > 70 và năng lượng > 50)
-SURVIVAL_HEALTH_REGEN = 2
