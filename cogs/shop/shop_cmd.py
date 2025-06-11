@@ -10,7 +10,7 @@ from core.config import COMMAND_PREFIX
 
 logger = logging.getLogger(__name__)
 
-ITEMS_PER_PAGE = 5  # Hiển thị 5 vật phẩm mỗi trang
+ITEMS_PER_PAGE = 5
 
 class ShopView(nextcord.ui.View):
     def __init__(self, *, items_data: List[Dict[str, Any]], original_author: nextcord.User):
@@ -23,13 +23,10 @@ class ShopView(nextcord.ui.View):
         self.update_buttons()
 
     def update_buttons(self):
-        # Nút "Trang trước" bị vô hiệu hóa ở trang đầu tiên
         self.children[0].disabled = self.current_page == 0
-        # Nút "Trang sau" bị vô hiệu hóa ở trang cuối cùng
         self.children[1].disabled = self.current_page >= self.total_pages - 1
 
     async def generate_embed_for_current_page(self) -> nextcord.Embed:
-        """Tạo embed hiển thị các vật phẩm cho trang hiện tại."""
         start_index = self.current_page * ITEMS_PER_PAGE
         end_index = start_index + ITEMS_PER_PAGE
         
@@ -39,7 +36,6 @@ class ShopView(nextcord.ui.View):
             color=nextcord.Color.gold()
         )
 
-        # Lấy các vật phẩm cho trang này
         page_items = self.items_data[start_index:end_index]
 
         if not page_items:
@@ -48,11 +44,14 @@ class ShopView(nextcord.ui.View):
             for item in page_items:
                 buy_price = item.get('price', 0)
                 sell_price = item.get('sell_price', 0)
+                # [SỬA] Lấy emoji từ dữ liệu, nếu không có thì để trống
+                emoji = item.get('emoji', '') 
                 name = item.get('name', item['id'].replace("_", " ").capitalize())
                 desc = item.get('description', 'Chưa có mô tả.')
                 
                 embed.add_field(
-                    name=f"{name} (ID: `{item['id']}`)",
+                    # [SỬA] Thêm emoji vào trước tên vật phẩm
+                    name=f"{emoji} {name} (ID: `{item['id']}`)", 
                     value=f"```{desc}```\n"
                           f"**Giá mua:** {format_large_number(buy_price)} | **Giá bán:** {format_large_number(sell_price)}",
                     inline=False
@@ -63,7 +62,7 @@ class ShopView(nextcord.ui.View):
 
     async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
         if interaction.user.id != self.original_author.id:
-            await interaction.response.send_message("Đây không phải là cửa hàng của bạn!", ephemeral=True)
+            await interaction.response.send_message("Đây không phải là menu của bạn!", ephemeral=True)
             return False
         return True
 
@@ -86,7 +85,7 @@ class ShopView(nextcord.ui.View):
 class ShopCommandCog(commands.Cog, name="Shop Command"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        logger.info("ShopCommandCog (Logic Hoàn chỉnh) initialized.")
+        logger.info("ShopCommandCog (Icon Ready) initialized.")
 
     @commands.command(name='shop', aliases=['store'])
     @commands.guild_only()
@@ -106,7 +105,6 @@ class ShopCommandCog(commands.Cog, name="Shop Command"):
 
             view = ShopView(items_data=sorted_items, original_author=ctx.author)
             
-            # Tạo và gửi ngay trang đầu tiên
             initial_embed = await view.generate_embed_for_current_page()
             
             sent_message = await try_send(ctx, embed=initial_embed, view=view)
