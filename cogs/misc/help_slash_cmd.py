@@ -69,7 +69,6 @@ class HelpMenuView(nextcord.ui.View):
         if self.current_category_page > 0:
             self.current_category_page -= 1
             self.update_view_components()
-            # Khi chuyển trang danh mục, quay về embed chính
             main_embed = self._create_main_embed()
             await interaction.response.edit_message(embed=main_embed, view=self)
 
@@ -109,58 +108,59 @@ class HelpMenuView(nextcord.ui.View):
     def _create_cog_embed(self, cog_info: Dict[str, Any]) -> nextcord.Embed:
         embed = nextcord.Embed(title=f"{cog_info['emoji']} {cog_info['name']}", description=cog_info["description"], color=nextcord.Color.blue())
         for cmd_info in cog_info["commands"]:
-            command_obj = self.bot.get_command(cmd_info["name"])
-            if command_obj:
-                usage = f"`{COMMAND_PREFIX}{command_obj.name} {command_obj.signature}`".strip()
-                help_text = cmd_info.get("desc", "Chưa có mô tả.")
-                embed.add_field(name=f"`{COMMAND_PREFIX}{command_obj.name}`", value=f"*{help_text}*\n**Cách dùng:** {usage}", inline=False)
+            # SỬA: Lấy cách dùng từ cmd_info thay vì từ .signature
+            usage_text = cmd_info.get("usage", "")
+            usage = f"`{COMMAND_PREFIX}{cmd_info['name']} {usage_text}`".strip()
+            help_text = cmd_info.get("desc", "Chưa có mô tả.")
+            embed.add_field(name=f"`{COMMAND_PREFIX}{cmd_info['name']}`", value=f"*{help_text}*\n**Cách dùng:** {usage}", inline=False)
         embed.set_footer(text=f"Trang danh mục {self.current_category_page + 1}/{self.total_category_pages}")
         return embed
 
 class HelpSlashCommandCog(commands.Cog, name="Help Slash Command"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # SỬA: Thêm trường 'usage' cho mỗi lệnh để hiển thị chính xác
         self.cogs_data = [
             {
                 "id": "economy", "name": "Lệnh Kinh tế", "emoji": ICON_MONEY_BAG,
                 "description": "Các lệnh liên quan đến tiền tệ, tài khoản.",
                 "commands": [
-                    {"name": "balance", "desc": "Xem số dư tất cả các ví của bạn hoặc người khác."},
-                    {"name": "deposit", "desc": "Gửi Tiền từ Ví vào Bank."},
-                    {"name": "withdraw", "desc": "Rút tiền từ Bank về Ví ."},
-                    {"name": "transfer", "desc": "Chuyển tiền từ Bank của bạn cho người khác."}
+                    {"name": "balance", "desc": "Xem số dư tất cả các ví của bạn hoặc người khác.", "usage": "[@người_dùng]"},
+                    {"name": "deposit", "desc": "Gửi Tiền từ Ví vào Bank.", "usage": "<số_tiền|all>"},
+                    {"name": "withdraw", "desc": "Rút tiền từ Bank về Ví.", "usage": "<số_tiền|all>"},
+                    {"name": "transfer", "desc": "Chuyển tiền từ Bank của bạn cho người khác.", "usage": "<@người_nhận> <số_tiền>"}
                 ]
             },
             {
                 "id": "earning", "name": "Lệnh Kiếm tiền", "emoji": "💼",
                 "description": "Các cách để kiếm thêm thu nhập.",
                 "commands": [
-                    {"name": "work", "desc": "Làm việc để kiếm Ecoin và kinh nghiệm."},
-                    {"name": "daily", "desc": "Nhận thưởng hàng ngày."},
-                    {"name": "crime", "desc": "Làm nhiệm vụ phi pháp, có rủi ro."},
-                    {"name": "fish", "desc": "Câu cá để bán kiếm tiền."},
-                    {"name": "rob", "desc": "Cướp tiền từ người chơi khác."},
-                    {"name": "beg", "desc": "Ăn xin để nhận một ít tiền lẻ."}
+                    {"name": "work", "desc": "Làm việc để kiếm Ecoin và kinh nghiệm.", "usage": ""},
+                    {"name": "daily", "desc": "Nhận thưởng hàng ngày.", "usage": ""},
+                    {"name": "crime", "desc": "Làm nhiệm vụ phi pháp, có rủi ro.", "usage": ""},
+                    {"name": "fish", "desc": "Câu cá để bán kiếm tiền.", "usage": ""},
+                    {"name": "rob", "desc": "Cướp tiền từ người chơi khác.", "usage": "<@nạn_nhân>"},
+                    {"name": "beg", "desc": "Ăn xin để nhận một ít tiền lẻ.", "usage": ""}
                 ]
             },
             {
                 "id": "games", "name": "Lệnh Trò chơi", "emoji": ICON_GAME,
                 "description": "Các trò chơi may rủi.",
                 "commands": [
-                    {"name": "coinflip", "desc": "Chơi tung đồng xu 50/50."},
-                    {"name": "dice", "desc": "Đổ xúc xắc, thắng nếu tổng lớn hơn 7."},
-                    {"name": "slots", "desc": "Quay máy xèng để thử vận may."}
+                    {"name": "coinflip", "desc": "Chơi tung đồng xu 50/50.", "usage": "<số_tiền_cược> <heads|tails>"},
+                    {"name": "dice", "desc": "Đổ xúc xắc, thắng nếu tổng lớn hơn 7.", "usage": "<số_tiền_cược>"},
+                    {"name": "slots", "desc": "Quay máy xèng để thử vận may.", "usage": "<số_tiền_cược>"}
                 ]
             },
             {
                 "id": "shop", "name": "Lệnh Cửa hàng", "emoji": ICON_SHOP,
                 "description": "Các lệnh liên quan đến mua, bán và túi đồ.",
                 "commands": [
-                    {"name": "shop", "desc": "Hiển thị các vật phẩm đang bán."},
-                    {"name": "buy", "desc": "Mua một vật phẩm từ cửa hàng."},
-                    {"name": "sell", "desc": "Bán một vật phẩm từ túi đồ."},
-                    {"name": "inventory", "desc": "Kiểm tra túi đồ của bạn."},
-                    {"name": "use", "desc": "Sử dụng một vật phẩm tiêu thụ."}
+                    {"name": "shop", "desc": "Hiển thị các vật phẩm đang bán.", "usage": ""},
+                    {"name": "buy", "desc": "Mua một vật phẩm từ cửa hàng.", "usage": "<ID_vật_phẩm> [số_lượng]"},
+                    {"name": "sell", "desc": "Bán một vật phẩm từ túi đồ.", "usage": "<ID_vật_phẩm> [số_lượng]"},
+                    {"name": "inventory", "desc": "Kiểm tra túi đồ của bạn.", "usage": "[@người_dùng]"},
+                    {"name": "use", "desc": "Sử dụng một vật phẩm tiêu thụ.", "usage": "<ID_vật_phẩm>"}
                 ]
             },
         ]
