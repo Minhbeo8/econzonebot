@@ -3,6 +3,7 @@ import nextcord
 from nextcord.ext import commands
 import logging
 import random
+import asyncio
 
 from core.utils import try_send, format_large_number
 from core.config import BASE_CATCH_CHANCE, WANTED_LEVEL_CATCH_MULTIPLIER
