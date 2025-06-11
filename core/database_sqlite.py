@@ -80,16 +80,26 @@ def initialize_database():
     logger.info("CSDL SQLite đã được kiểm tra và khởi tạo (nếu cần).")
 
 # --- HÀM TẢI DỮ LIỆU ---
+
 def load_item_definitions(file_path: str = 'items.json') -> Dict[str, Any]:
-    # (Hàm này giữ nguyên, đọc từ file JSON)
+    """
+    [SỬA] Tải định nghĩa vật phẩm từ file JSON.
+    Hàm này giờ sẽ đọc tất cả các key ở cấp cao nhất làm vật phẩm.
+    """
     try:
-        if not os.path.exists(file_path): return {}
+        if not os.path.exists(file_path):
+            logger.error(f"File định nghĩa vật phẩm '{file_path}' không tồn tại.")
+            return {}
         with open(file_path, 'r', encoding='utf-8') as f:
             item_data = json.load(f)
-        all_items = {**item_data.get("shop_items", {}), **item_data.get("utility_items", {})}
-        return all_items
+       
+        return item_data
+
+    except json.JSONDecodeError:
+        logger.error(f"Lỗi cú pháp trong file {file_path}. Vui lòng kiểm tra lại.")
+        return {}
     except Exception as e:
-        logger.error(f"Lỗi khi tải file định nghĩa vật phẩm '{file_path}': {e}", exc_info=True)
+        logger.error(f"Lỗi không xác định khi tải file định nghĩa vật phẩm '{file_path}': {e}", exc_info=True)
         return {}
 
 def load_moderator_ids(file_path: str = 'moderators.json') -> List[int]:
