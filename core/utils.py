@@ -71,11 +71,15 @@ def require_travel_check(func):
     """
     Decorator để kiểm tra xem người dùng có đang trong trạng thái 'di chuyển' hay không.
     """
-    async def wrapper(self, ctx: commands.Context, *args, **kwargs):
-        # Logic này cần được hoàn thiện nếu có hệ thống di chuyển
-        # Ví dụ: kiểm tra một trạng thái trong CSDL
-        # if self.bot.db.is_user_traveling(ctx.author.id):
-        #     await try_send(ctx, content="Bạn đang di chuyển, không thể thực hiện hành động này.")
-        #     return
+    async def wrapper(self, ctx: commands.Context, *args, **kwargs):        
         await func(self, ctx, *args, **kwargs)
     return wrapper
+def find_best_match(query: str, choices: list, score_cutoff: int = 75) -> Optional[str]:
+    """
+    Tìm chuỗi gần đúng nhất trong một danh sách.
+    Trả về chuỗi phù hợp nhất nếu độ tương đồng > score_cutoff, ngược lại trả về None.
+    """
+    best_match = process.extractOne(query, choices, score_cutoff=score_cutoff)
+    if best_match:
+        return best_match[0]
+    return None
