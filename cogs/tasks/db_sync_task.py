@@ -7,7 +7,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 DB_SYNC_INTERVAL_MINUTES = 15
-REPO_PATH = "./data" # Thư mục chứa CSDL và repo git
+REPO_PATH = "./data"
 COMMIT_MSG = "Automatic DB sync"
 
 class DatabaseSyncTaskCog(commands.Cog, name="Database Sync Task"):
@@ -49,48 +49,33 @@ class DatabaseSyncTaskCog(commands.Cog, name="Database Sync Task"):
             logger.info(f"Shell command stdout: {stdout_message}")
         return True
 
-    async def setup_repository(self):
-        """Kiểm tra và tự động thiết lập kho chứa git cục bộ nếu cần."""
-        await self.bot.wait_until_ready() # Đợi bot sẵn sàng
-        
-        git_dir = os.path.join(REPO_PATH, '.git')
-        if os.path.isdir(git_dir):
-            logger.info("DB Sync: Kho chứa cục bộ đã tồn tại. Bỏ qua bước thiết lập.")
-        else:
-            logger.info("DB Sync: Lần đầu thiết lập kho chứa CSDL cục bộ...")
-            db_repo_url = os.getenv("DB_REPO_URL")
-            if not db_repo_url:
-                logger.error("DB Sync: DB_REPO_URL không được đặt trong file .env! Không thể tự động thiết lập.")
-                return
-
-            os.makedirs(REPO_PATH, exist_ok=True)
-            await self.run_shell_command("git init")
-            await self.run_shell_command(f"git remote add origin {db_repo_url}")
-            # Tạo file .gitignore
-            with open(os.path.join(REPO_PATH, ".gitignore"), "w") as f:
-                f.write("*\n!econzone.sqlite")
-            logger.info("DB Sync: Đã khởi tạo và kết nối kho chứa thành công.")
-
-        # Sau khi thiết lập xong (hoặc nếu đã có sẵn), bắt đầu vòng lặp đồng bộ
-        self.sync_database_task.start()
-        logger.info(f"Database Sync Task has been started. Syncing every {DB_SYNC_INTERVAL_MINUTES} minutes.")
-
-    @tasks.loop(minutes=DB_SYNC_INTERVAL_MINUTES)
-    async def sync_database_task(self):
+    async def force_sync(self):
+        """Hàm thực hiện logic sao lưu, có thể được gọi từ bất cứ đâu."""
         if not os.path.exists(os.path.join(REPO_PATH, 'econzone.sqlite')):
             logger.warning("DB_SYNC_TASK: econzone.sqlite not found. Skipping sync.")
-            return
+            return False
 
-        logger.info("DB_SYNC_TASK: Starting database sync process...")
+        logger.info("DB_SYNC_TASK: Forcing database sync...")
         
         await self.run_shell_command("git add econzone.sqlite")
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        await self.run_shell_command(f"git commit -m \"{COMMIT_MSG} at {current_time}\"")
+        await self.run_shell_command(f"git commit --allow-empty -m \"{COMMIT_MSG} at {current_time}\"")
         
         if await self.run_shell_command("git push origin main -f"):
-             logger.info("DB_SYNC_TASK: Successfully pushed database to GitHub.")
+             logger.info("DB_SYNC_TASK: Force sync to GitHub successful.")
+             return True
         else:
-             logger.error("DB_SYNC_TASK: Failed to push database to GitHub.")
+             logger.error("DB_SYNC_TASK: Force sync to GitHub failed.")
+             return False
+
+    @tasks.loop(minutes=DB_SYNC_INTERVAL_MINUTES)
+    async def sync_database_task(self):
+        logger.info("DB_SYNC_TASK: Running scheduled sync...")
+        await self.force_sync() # Vòng lặp giờ chỉ cần gọi hàm force_sync
+
+    @sync_database_task.before_loop
+    async def before_sync(self):
+        await self.bot.wait_until_ready()
 
 def setup(bot: commands.Bot):
     bot.add_cog(DatabaseSyncTaskCog(bot))
