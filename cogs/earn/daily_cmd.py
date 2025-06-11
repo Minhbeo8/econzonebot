@@ -1,14 +1,17 @@
-# bot/cogs/earn/daily_cmd.py
 import nextcord
 from nextcord.ext import commands
 import random
 from datetime import datetime
 import logging
+
 from core.utils import try_send, format_relative_timestamp
-from core.utils import try_send
-from core.config import DAILY_COOLDOWN
+# SỬA: Import các biến cấu hình mới và đầy đủ
+from core.config import (
+    DAILY_COOLDOWN, DAILY_REWARD_MIN, DAILY_REWARD_MAX,
+    DAILY_XP_LOCAL_MIN, DAILY_XP_LOCAL_MAX, DAILY_XP_GLOBAL_MIN, DAILY_XP_GLOBAL_MAX
+)
 from core.leveling import check_and_process_levelup
-from core.icons import ICON_LOADING, ICON_GIFT, ICON_MONEY_BAG, ICON_ERROR, ICON_TIEN_SACH
+from core.icons import ICON_LOADING, ICON_GIFT, ICON_MONEY_BAG, ICON_ERROR, ICON_TIEN_SACH, ICON_XP
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ class DailyCommandCog(commands.Cog, name="Daily Command"):
             now = datetime.now().timestamp()
             last_daily = self.bot.db.get_cooldown(author_id, 'daily')
             
-            if now < last_daily + DAILY_COOLDOWN:
+            if last_daily and now < last_daily + DAILY_COOLDOWN:
                 cooldown_end_timestamp = last_daily + DAILY_COOLDOWN             
                 relative_time_str = format_relative_timestamp(cooldown_end_timestamp)
                 
@@ -36,32 +39,30 @@ class DailyCommandCog(commands.Cog, name="Daily Command"):
             
             local_data = self.bot.db.get_or_create_user_local_data(author_id, guild_id)
             
-            bonus = random.randint(500, 1500)
-            xp_earned_local = random.randint(15, 50)
-            xp_earned_global = random.randint(25, 75)
+            # SỬA: Lấy giá trị ngẫu nhiên từ config
+            bonus = random.randint(DAILY_REWARD_MIN, DAILY_REWARD_MAX)
+            xp_earned_local = random.randint(DAILY_XP_LOCAL_MIN, DAILY_XP_LOCAL_MAX)
+            xp_earned_global = random.randint(DAILY_XP_GLOBAL_MIN, DAILY_XP_GLOBAL_MAX)
 
-            # Cập nhật dữ liệu
-            self.bot.db.update_balance(author_id, guild_id, 'local_balance_earned', local_data['local_balance_earned'] + bonus)
+            self.bot.db.update_local_balance(author_id, guild_id, 'local_balance_earned', local_data['local_balance_earned'] + bonus)
             self.bot.db.update_xp(author_id, guild_id, xp_earned_local, xp_earned_global)
             self.bot.db.set_cooldown(author_id, 'daily', now)
             
-            new_earned_balance = local_data['local_balance_earned'] + bonus
-            total_local_balance = new_earned_balance + local_data['local_balance_adadd']
+            updated_local_data = self.bot.db.get_or_create_user_local_data(author_id, guild_id)
+            total_local_balance = updated_local_data['local_balance_earned'] + updated_local_data['local_balance_adadd']
             
             await try_send(
                 ctx, 
                 content=(
                     f"{ICON_GIFT} {ctx.author.mention}, bạn đã nhận phần thưởng hàng ngày:\n"
                     f"  {ICON_TIEN_SACH} **{bonus:,}** Tiền Sạch\n"
-                    f"  ✨ **{xp_earned_local}** XP (Server) & **{xp_earned_global}** XP (Global)\n"
+                    f"  {ICON_XP} **{xp_earned_local}** XP (Server) & **{xp_earned_global}** XP (Global)\n"
                     f"Tổng Ví Local của bạn giờ là: **{total_local_balance:,}** {ICON_MONEY_BAG}"
                 )
             )
 
-            # Cập nhật lại dữ liệu mới nhất để kiểm tra level up
             global_profile = self.bot.db.get_or_create_global_user_profile(author_id)
-            local_data = self.bot.db.get_or_create_user_local_data(author_id, guild_id)
-            await check_and_process_levelup(ctx, dict(local_data), 'local')
+            await check_and_process_levelup(ctx, dict(updated_local_data), 'local')
             await check_and_process_levelup(ctx, dict(global_profile), 'global')
 
         except Exception as e:
