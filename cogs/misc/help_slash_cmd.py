@@ -126,8 +126,8 @@ class HelpSlashCommandCog(commands.Cog, name="Help Slash Command"):
                 "description": "Các lệnh liên quan đến tiền tệ, tài khoản.",
                 "commands": [
                     {"name": "balance", "desc": "Xem số dư tất cả các ví của bạn hoặc người khác."},
-                    {"name": "deposit", "desc": "Gửi Tiền Sạch từ Ví Local vào Bank."},
-                    {"name": "withdraw", "desc": "Rút tiền từ Bank về Ví Local."},
+                    {"name": "deposit", "desc": "Gửi Tiền từ Ví vào Bank."},
+                    {"name": "withdraw", "desc": "Rút tiền từ Bank về Ví ."},
                     {"name": "transfer", "desc": "Chuyển tiền từ Bank của bạn cho người khác."}
                 ]
             },
