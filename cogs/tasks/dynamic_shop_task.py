@@ -2,9 +2,12 @@ import nextcord
 from nextcord.ext import commands, tasks
 import random
 from datetime import datetime, time, timedelta
+import logging  # SỬA: Import thư viện logging tiêu chuẩn
 
-from core.logger import logger
 from core.database_sqlite import get_db_connection
+
+# SỬA: Lấy logger cho module hiện tại
+logger = logging.getLogger(__name__)
 
 class DynamicShopTaskCog(commands.Cog):
     def __init__(self, bot):
@@ -25,7 +28,7 @@ class DynamicShopTaskCog(commands.Cog):
             logger.info("Dynamic Shop Task (SQLite): Starting DB operations...")
 
             for item_data in items:
-                item = dict(item_data)  # Chuyển đổi từ Row sang dict
+                item = dict(item_data)
                 item_id = item['item_id']
                 
                 # Logic restock
@@ -52,7 +55,6 @@ class DynamicShopTaskCog(commands.Cog):
                 
                 conn.execute("UPDATE items SET price = ? WHERE item_id = ?", (final_price, item_id))
                 
-                # Cập nhật giá vào cache của bot
                 if item_id in self.bot.item_definitions:
                     self.bot.item_definitions[item_id]["price"] = final_price
 
@@ -68,7 +70,6 @@ class DynamicShopTaskCog(commands.Cog):
     async def restock_and_update_prices_sqlite(self):
         logger.info("Dynamic Shop Task (SQLite): Task loop is running.")
         try:
-            # Chạy hàm xử lý CSDL đồng bộ trong một luồng riêng
             await self.bot.loop.run_in_executor(None, self._update_shop_db)
         except Exception as e:
             logger.error(f"Error in Dynamic Shop Task (SQLite) loop: {e}", exc_info=True)
