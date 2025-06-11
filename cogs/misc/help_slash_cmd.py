@@ -21,16 +21,14 @@ class HelpMenuView(nextcord.ui.View):
         self.bot = bot
         self.message = None
         
-        # Biến cho việc phân trang danh mục
         self.current_category_page = 0
         self.total_category_pages = math.ceil(len(self.cogs_data) / CATEGORIES_PER_PAGE)
 
-        # Khởi tạo các thành phần ban đầu
         self.update_view_components()
 
     def update_view_components(self):
         """Tạo lại các thành phần của View (dropdown, nút) dựa trên trang danh mục hiện tại."""
-        self.clear_items() # Xóa các thành phần cũ
+        self.clear_items()
 
         # --- Tạo Dropdown Menu ---
         start_index = self.current_category_page * CATEGORIES_PER_PAGE
@@ -46,7 +44,7 @@ class HelpMenuView(nextcord.ui.View):
             )
         
         select_menu = nextcord.ui.Select(placeholder="Chọn một mục để xem...", options=options, custom_id="help_menu_select")
-        select_menu.callback = self.on_select_callback # Gán callback cho dropdown
+        select_menu.callback = self.on_select_callback
         self.add_item(select_menu)
 
         # --- Tạo các nút bấm phân trang danh mục ---
@@ -67,22 +65,23 @@ class HelpMenuView(nextcord.ui.View):
             return False
         return True
 
-    # --- Các hàm Callback ---
     async def go_to_prev_page(self, interaction: nextcord.Interaction):
         if self.current_category_page > 0:
             self.current_category_page -= 1
             self.update_view_components()
-            await interaction.response.edit_message(view=self)
+            # Khi chuyển trang danh mục, quay về embed chính
+            main_embed = self._create_main_embed()
+            await interaction.response.edit_message(embed=main_embed, view=self)
 
     async def go_to_next_page(self, interaction: nextcord.Interaction):
         if self.current_category_page < self.total_category_pages - 1:
             self.current_category_page += 1
             self.update_view_components()
-            await interaction.response.edit_message(view=self)
+            main_embed = self._create_main_embed()
+            await interaction.response.edit_message(embed=main_embed, view=self)
 
     async def on_select_callback(self, interaction: nextcord.Interaction):
         try:
-            # Không cần defer ở đây vì edit_message đã là một phản hồi
             selected_value = interaction.data['values'][0]
             new_embed = None
 
@@ -109,12 +108,12 @@ class HelpMenuView(nextcord.ui.View):
 
     def _create_cog_embed(self, cog_info: Dict[str, Any]) -> nextcord.Embed:
         embed = nextcord.Embed(title=f"{cog_info['emoji']} {cog_info['name']}", description=cog_info["description"], color=nextcord.Color.blue())
-        for cmd in cog_info["commands"]:
-            command_obj = self.bot.get_command(cmd)
+        for cmd_info in cog_info["commands"]:
+            command_obj = self.bot.get_command(cmd_info["name"])
             if command_obj:
                 usage = f"`{COMMAND_PREFIX}{command_obj.name} {command_obj.signature}`".strip()
-                help_text = command_obj.short_doc or "Chưa có mô tả."
-                embed.add_field(name=f"`{COMMAND_PREFIX}{command_obj.name}`", value=f"{help_text}\n*Cách dùng: {usage}*", inline=False)
+                help_text = cmd_info.get("desc", "Chưa có mô tả.")
+                embed.add_field(name=f"`{COMMAND_PREFIX}{command_obj.name}`", value=f"*{help_text}*\n**Cách dùng:** {usage}", inline=False)
         embed.set_footer(text=f"Trang danh mục {self.current_category_page + 1}/{self.total_category_pages}")
         return embed
 
@@ -122,25 +121,57 @@ class HelpSlashCommandCog(commands.Cog, name="Help Slash Command"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.cogs_data = [
-            {"id": "economy", "name": "Lệnh Kinh tế", "description": "Các lệnh liên quan đến tiền tệ, tài khoản.", "emoji": ICON_MONEY_BAG, "commands": ["balance", "deposit", "withdraw", "transfer"]},
-            {"id": "earning", "name": "Lệnh Kiếm tiền", "description": "Các cách để kiếm thêm thu nhập.", "emoji": "💼", "commands": ["work", "daily", "crime", "fish", "rob", "beg"]},
-            {"id": "games", "name": "Lệnh Trò chơi", "description": "Các trò chơi may rủi.", "emoji": ICON_GAME, "commands": ["coinflip", "dice", "slots"]},
-            {"id": "shop", "name": "Lệnh Cửa hàng", "description": "Các lệnh liên quan đến mua, bán và túi đồ.", "emoji": ICON_SHOP, "commands": ["shop", "buy", "sell", "inventory", "use"]},
-            # Bạn có thể thêm nhiều danh mục khác vào đây mà không sợ lỗi
+            {
+                "id": "economy", "name": "Lệnh Kinh tế", "emoji": ICON_MONEY_BAG,
+                "description": "Các lệnh liên quan đến tiền tệ, tài khoản.",
+                "commands": [
+                    {"name": "balance", "desc": "Xem số dư tất cả các ví của bạn hoặc người khác."},
+                    {"name": "deposit", "desc": "Gửi Tiền Sạch từ Ví Local vào Bank."},
+                    {"name": "withdraw", "desc": "Rút tiền từ Bank về Ví Local."},
+                    {"name": "transfer", "desc": "Chuyển tiền từ Bank của bạn cho người khác."}
+                ]
+            },
+            {
+                "id": "earning", "name": "Lệnh Kiếm tiền", "emoji": "💼",
+                "description": "Các cách để kiếm thêm thu nhập.",
+                "commands": [
+                    {"name": "work", "desc": "Làm việc để kiếm Ecoin và kinh nghiệm."},
+                    {"name": "daily", "desc": "Nhận thưởng hàng ngày."},
+                    {"name": "crime", "desc": "Làm nhiệm vụ phi pháp, có rủi ro."},
+                    {"name": "fish", "desc": "Câu cá để bán kiếm tiền."},
+                    {"name": "rob", "desc": "Cướp tiền từ người chơi khác."},
+                    {"name": "beg", "desc": "Ăn xin để nhận một ít tiền lẻ."}
+                ]
+            },
+            {
+                "id": "games", "name": "Lệnh Trò chơi", "emoji": ICON_GAME,
+                "description": "Các trò chơi may rủi.",
+                "commands": [
+                    {"name": "coinflip", "desc": "Chơi tung đồng xu 50/50."},
+                    {"name": "dice", "desc": "Đổ xúc xắc, thắng nếu tổng lớn hơn 7."},
+                    {"name": "slots", "desc": "Quay máy xèng để thử vận may."}
+                ]
+            },
+            {
+                "id": "shop", "name": "Lệnh Cửa hàng", "emoji": ICON_SHOP,
+                "description": "Các lệnh liên quan đến mua, bán và túi đồ.",
+                "commands": [
+                    {"name": "shop", "desc": "Hiển thị các vật phẩm đang bán."},
+                    {"name": "buy", "desc": "Mua một vật phẩm từ cửa hàng."},
+                    {"name": "sell", "desc": "Bán một vật phẩm từ túi đồ."},
+                    {"name": "inventory", "desc": "Kiểm tra túi đồ của bạn."},
+                    {"name": "use", "desc": "Sử dụng một vật phẩm tiêu thụ."}
+                ]
+            },
         ]
 
     @nextcord.slash_command(name="menu", description="Mở menu trợ giúp chính của bot.")
     async def menu_slash_command(self, interaction: nextcord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
-
-            initial_embed = nextcord.Embed(
-                title=f"{ICON_INFO} Menu Trợ giúp",
-                description="Chào mừng đến với EconZone! Vui lòng chọn một mục từ menu bên dưới để xem chi tiết các lệnh.",
-                color=nextcord.Color.blue()
-            ).set_footer(text="Bot được phát triển bởi minhbeo8")
             
             view = HelpMenuView(self.cogs_data, interaction.user, self.bot)
+            initial_embed = view._create_main_embed()
 
             await interaction.followup.send(embed=initial_embed, view=view, ephemeral=True)
             view.message = await interaction.original_message()
