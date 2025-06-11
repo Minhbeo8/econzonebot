@@ -2,7 +2,7 @@
 
 # ======================================================================
 # --- CƠ BẢN & HỆ THỐNG ---
-# =================================toàn bộ=====================================
+# ======================================================================
 ICON_SUCCESS = "✅"
 ICON_ERROR = "❌"
 ICON_WARNING = "⚠️"
@@ -12,7 +12,7 @@ ICON_LOADING = "⏳"
 ICON_SETTINGS = "⚙️"
 ICON_PING = "📶"
 ICON_HELP = "📜"
-ICON_BOOK = "📖" # [MỚI]
+ICON_BOOK = "📖"
 ICON_COMMAND_DETAIL = "📘"
 ICON_CROWN = "👑"
 
@@ -24,12 +24,12 @@ ICON_BANK = "🏦"
 ICON_BANK_MAIN = "🏛️"
 ICON_ECOIN = "🪙"
 ICON_ECOBIT = "🧪"
-ICON_TIEN_SACH = "🪙"  # Alias for Ecoin
-ICON_TIEN_LAU = "🧪"   # Alias for Ecobit
-ICON_TAINTED = "☣️" # [MỚI]
+ICON_TIEN_SACH = "🪙"
+ICON_TIEN_BAN = "🧪" # Alias mới cho Ecobit
+ICON_TAINTED = "☣️"
 ICON_GIFT = "🎁"
-ICON_TRANSFER = "💸" # [MỚI]
-ICON_LAUNDER = "🧼" # [MỚI]
+ICON_TRANSFER = "💸"
+ICON_LAUNDER = "🧼"
 ICON_TICKET = "🎟️"
 
 # ======================================================================
@@ -39,12 +39,13 @@ ICON_WORK = "🔨"
 ICON_FISH = "🐟"
 ICON_CRIME = "🔫"
 ICON_ROB = "🥷"
-ICON_BEG = "🙏" # [MỚI]
-ICON_DAILY = "📅" # [MỚI]
+ICON_BEG = "🙏"
+ICON_DAILY = "📅"
+ICON_CRIME_SCENE = "🕵️" # THÊM MỚI: Icon còn thiếu
 
-ICON_WANTED = "🕵️" # [MỚI]
+ICON_WANTED = "🕵️"
 ICON_POLICE = "👮"
-ICON_POLICE_CAR = "🚓" # [MỚI]
+ICON_POLICE_CAR = "🚓"
 ICON_MAFIA = "🕴️"
 ICON_DOCTOR = "⚕️"
 ICON_ADMIN = "🤴"
@@ -56,7 +57,7 @@ ICON_ADMIN_PANEL = "🛡️"
 ICON_GAME = "🎮"
 ICON_SLOTS = "🎰"
 ICON_DICE = "🎲"
-ICON_COIN_FLIP = "🪙" # [MỚI]
+ICON_COIN_FLIP = "🪙"
 ICON_COINFLIP_HEADS = "🪙"
 ICON_COINFLIP_TAILS = "⚫"
 
@@ -68,11 +69,11 @@ ICON_INVENTORY = "🎒"
 ICON_LAPTOP = "💻"
 ICON_GOLD_WATCH = "⌚"
 ICON_FISHING_ROD = "🎣"
-ICON_USE = "🩹" # [MỚI]
+ICON_USE = "🩹"
 ICON_SURVIVAL = "❤️‍🩹"
-ICON_HEALTH = "❤️" # [MỚI]
-ICON_HUNGER = "🍔" # [MỚI]
-ICON_ENERGY = "⚡" # [MỚI]
+ICON_HEALTH = "❤️"
+ICON_HUNGER = "🍔"
+ICON_ENERGY = "⚡"
 ICON_UTILITY = "🛠️"
 
 # ======================================================================
@@ -80,15 +81,15 @@ ICON_UTILITY = "🛠️"
 # ======================================================================
 ICON_PROFILE = "👤"
 ICON_LEADERBOARD = "🏆"
-ICON_LEVEL_UP = "✨" # [MỚI]
-ICON_XP = "⭐" # [MỚI]
+ICON_LEVEL_UP = "✨"
+ICON_XP = "⭐"
 ICON_GLOBAL = "🌍"
 ICON_LOCAL = "🏠"
 ICON_MUTE = "🔇"
 ICON_UNMUTE = "🔊"
 
 # --- DU LỊCH & VISA ---
-ICON_TRAVEL = "✈️" # [MỚI]
+ICON_TRAVEL = "✈️"
 ICON_ECOBANK = "💳"
 ICON_ECOVISA = "🌐"
 ICON_BACKPACK = "🎒"
