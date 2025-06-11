@@ -2,7 +2,8 @@ import nextcord
 from nextcord.ext import commands
 import logging
 
-from core.checks import require_travel_check
+# SỬA: Đổi 'core.checks' thành 'core.travel_manager'
+from core.travel_manager import require_travel_check 
 from core.config import LAUNDER_TAX_RATE
 from core.utils import format_large_number
 from core.icons import ICON_ECOIN, ICON_ECOBIT, ICON_SUCCESS, ICON_ERROR
@@ -24,7 +25,6 @@ class LaunderCommandCog(commands.Cog):
         local_data = self.bot.db.get_or_create_user_local_data(user_id, guild_id)
         ecobit_balance = local_data['local_balance_adadd']
         
-        # SỬA: Xử lý và chuyển đổi đầu vào 'amount_str'
         try:
             if amount_str.lower() == 'all':
                 amount_to_launder = ecobit_balance
@@ -49,7 +49,6 @@ class LaunderCommandCog(commands.Cog):
         tax = int(amount_to_launder * LAUNDER_TAX_RATE)
         amount_received = amount_to_launder - tax
 
-        # Cập nhật CSDL
         self.bot.db.update_local_balance(user_id, guild_id, 'local_balance_adadd', -amount_to_launder)
         self.bot.db.update_local_balance(user_id, guild_id, 'local_balance_earned', amount_received)
         
@@ -71,7 +70,6 @@ class LaunderCommandCog(commands.Cog):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(f"{ICON_ERROR} Bạn chưa nhập số tiền cần rửa. \n**Cách dùng:** `{self.bot.command_prefix}launder <số_tiền|all>`")
         else:
-            # Đối với các lỗi khác, log lại để debug
             logger.error(f"Lỗi không xác định trong lệnh launder: {error}", exc_info=True)
             await ctx.send(f"{ICON_ERROR} Đã có lỗi xảy ra. Vui lòng thử lại sau.")
 
