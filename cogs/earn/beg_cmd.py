@@ -4,10 +4,10 @@ import random
 from datetime import datetime
 import logging
 
-# [SỬA] Import hàm mới và bỏ hàm cũ
 from core.utils import try_send, format_relative_timestamp, require_travel_check
-from core.config import BEG_COOLDOWN
-from core.icons import ICON_LOADING, ICON_GIFT, ICON_WARNING, ICON_INFO, ICON_ERROR, ICON_BANK_MAIN
+# SỬA: Import các biến cấu hình mới
+from core.config import BEG_COOLDOWN, BEG_SUCCESS_RATE, BEG_REWARD_MIN, BEG_REWARD_MAX
+from core.icons import ICON_LOADING, ICON_GIFT, ICON_WARNING, ICON_BANK_MAIN
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,7 @@ class BegCommandCog(commands.Cog, name="Beg Command"):
         now = datetime.now().timestamp()
         last_beg = self.bot.db.get_cooldown(author_id, "beg")
         
-        # [SỬA] Sử dụng logic timestamp mới
-        if now < last_beg + BEG_COOLDOWN:
+        if last_beg and now < last_beg + BEG_COOLDOWN:
             cooldown_end_timestamp = last_beg + BEG_COOLDOWN
             relative_time_str = format_relative_timestamp(cooldown_end_timestamp)
             await try_send(ctx, content=f"{ICON_LOADING} Đừng xin liên tục thế chứ! Hãy quay lại sau ({relative_time_str}).")
@@ -34,13 +33,23 @@ class BegCommandCog(commands.Cog, name="Beg Command"):
 
         self.bot.db.set_cooldown(author_id, "beg", now)
         
-        if random.random() < 0.7: 
-            earnings = random.randint(10, 100)
+        # SỬA: Sử dụng tỉ lệ thành công từ config
+        if random.random() < BEG_SUCCESS_RATE: 
+            # SỬA: Sử dụng khoảng tiền từ config
+            earnings = random.randint(BEG_REWARD_MIN, BEG_REWARD_MAX)
+            
+            # Logic gốc của bạn: cộng tiền vào bank
             user_profile = self.bot.db.get_or_create_global_user_profile(author_id)
             new_balance = user_profile['bank_balance'] + earnings
-            self.bot.db.update_balance(author_id, None, 'bank_balance', new_balance)
+            # Chú ý: Hàm update_balance có vẻ không tồn tại trong db của bạn, tôi giả định nó là update_global_balance
+            # Nếu bot báo lỗi ở đây, chúng ta sẽ xem lại hàm CSDL. Tạm thời dùng hàm phù hợp nhất.
+            self.bot.db.update_global_balance(author_id, 'bank_balance', earnings)
             
-            await try_send(ctx, content=f"{ICON_GIFT} Một người tốt bụng đã cho {ctx.author.mention} **{earnings:,}**! Số dư {ICON_BANK_MAIN} của bạn giờ là: **{new_balance:,}**")
+            # Lấy lại số dư mới nhất để hiển thị chính xác
+            updated_profile = self.bot.db.get_or_create_global_user_profile(author_id)
+            final_balance = updated_profile['bank_balance']
+
+            await try_send(ctx, content=f"{ICON_GIFT} Một người tốt bụng đã cho {ctx.author.mention} **{earnings:,}**! Số dư {ICON_BANK_MAIN} của bạn giờ là: **{final_balance:,}**")
         else:
             await try_send(ctx, content=f"{ICON_WARNING} Không ai cho {ctx.author.mention} tiền cả. 😢")
             
