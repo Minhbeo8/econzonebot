@@ -11,15 +11,15 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 # --- Cấu hình Bot cơ bản ---
 COMMAND_PREFIX = "!"
-BOT_OWNER_IDS = [1370417047070048276] # ID của chủ sở hữu bot
+BOT_OWNER_IDS = [1370417047070048276] 
 
 # --- Thời gian chờ (giây) ---
-WORK_COOLDOWN = 3600    # 1 giờ
-DAILY_COOLDOWN = 86400  # 24 giờ
-CRIME_COOLDOWN = 1800   # 30 phút
-BEG_COOLDOWN = 300      # 5 phút
-FISH_COOLDOWN = 600     # 10 phút
-ROB_COOLDOWN = 7200     # 2 giờ
+WORK_COOLDOWN = 3600
+DAILY_COOLDOWN = 86400
+CRIME_COOLDOWN = 1800
+BEG_COOLDOWN = 300
+FISH_COOLDOWN = 600
+ROB_COOLDOWN = 7200
 SLOTS_COOLDOWN = 5
 CF_COOLDOWN = 5
 DICE_COOLDOWN = 5
@@ -27,8 +27,13 @@ DICE_COOLDOWN = 5
 # --- Cân bằng Kinh tế & Game ---
 
 # Lệnh work
-WORK_PAYOUT_MIN = 80
-WORK_PAYOUT_MAX = 250
+WORK_PAYOUT_MIN = 150
+WORK_PAYOUT_MAX = 500
+# THÊM MỚI: Cấu hình XP cho lệnh work
+WORK_XP_LOCAL_MIN = 5
+WORK_XP_LOCAL_MAX = 20
+WORK_XP_GLOBAL_MIN = 10
+WORK_XP_GLOBAL_MAX = 30
 
 # Lệnh daily
 DAILY_REWARD_MIN = 400
@@ -39,8 +44,8 @@ BEG_REWARD_MIN = 1
 BEG_REWARD_MAX = 50
 
 # Lệnh launder (rửa tiền)
-LAUNDER_TAX_RATE_MIN = 0.15  # Tỉ lệ thuế tối thiểu (15%)
-LAUNDER_TAX_RATE_MAX = 0.50  # Tỉ lệ thuế tối đa (50%)
+LAUNDER_TAX_RATE_MIN = 0.15
+LAUNDER_TAX_RATE_MAX = 0.50
 
 # Các thông số khác
 DEPOSIT_FEE_PERCENTAGE = 0.05
@@ -68,22 +73,7 @@ SURVIVAL_STAT_DECAY = 1
 SURVIVAL_HEALTH_REGEN = 2
 
 # --- Dữ liệu Game (ít thay đổi) ---
-CITIZEN_TITLES = {
-    0: "Công Dân",
-    10: "Người Có Tiếng Tăm",
-    25: "Nhân Vật Ưu Tú",
-    50: "Huyền Thoại Server"
-}
-
-CRIMINAL_TITLES = {
-    0: "Tội Phạm Vặt",
-    10: "Kẻ Ngoài Vòng Pháp Luật",
-    25: "Trùm Tội Phạm",
-    50: "Bố Già"
-}
-
+CITIZEN_TITLES = { 0: "Công Dân", 10: "Người Có Tiếng Tăm", 25: "Nhân Vật Ưu Tú", 50: "Huyền Thoại Server" }
+CRIMINAL_TITLES = { 0: "Tội Phạm Vặt", 10: "Kẻ Ngoài Vòng Pháp Luật", 25: "Trùm Tội Phạm", 50: "Bố Già" }
 SLOTS_EMOJIS = ["🍒", "🍊", "🍋", "🔔", "⭐", "💎"]
-FISH_CATCHES = {
-    "🐠": 50, "🐟": 75, "🐡": 100, "🦑": 150, "🦐": 30, "🦀": 60,
-    "👢": 5, "🔩": 1, "🪵": 10
-}
+FISH_CATCHES = { "🐠": 50, "🐟": 75, "🐡": 100, "🦑": 150, "🦐": 30, "🦀": 60, "👢": 5, "🔩": 1, "🪵": 10 }
