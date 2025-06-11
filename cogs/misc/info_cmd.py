@@ -70,7 +70,7 @@ class InfoCommandCog(commands.Cog, name="Info Command"):
         )
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        # HÀNG 1 - CỘT 1: TÀI SẢN
+        # --- HÀNG 1: TÀI SẢN & THÀNH TỰU ---
         finance_info = (
             f"{ICON_ECOIN} Ecoin: `{format_large_number(local_data['local_balance_earned'])}`\n"
             f"{ICON_ECOBIT} Ecobit: `{format_large_number(local_data['local_balance_adadd'])}`\n"
@@ -78,33 +78,34 @@ class InfoCommandCog(commands.Cog, name="Info Command"):
         )
         embed.add_field(name="Tài sản", value=finance_info, inline=True)
 
-        # HÀNG 1 - CỘT 2: THÀNH TỰU
         achievements_text = ""
         if is_owner:
             achievements_text += f"👑 **Nhà Sáng Lập**\n*Người tạo ra thế giới này.*\n"
-        
         if not achievements_text:
             achievements_text = "_Chưa có thành tựu nào._"
         embed.add_field(name="Thành Tựu", value=achievements_text, inline=True)
 
-        # HÀNG 2: CẤP ĐỘ
+        # --- HÀNG 2: CẤP ĐỘ & KINH NGHIỆM ---
         xp_local_needed = xp_for_level(local_data['level_local'])
+        xp_global_needed = xp_for_level(global_profile['level_global'])
         level_info = (
-            f"`{format_large_number(local_data['xp_local'])} / {format_large_number(xp_local_needed)}` XP\n"
-            f"{create_progress_bar(local_data['xp_local'], xp_local_needed)}"
+            f"{ICON_LOCAL} **Server (Lv.{local_data['level_local']}):**\n"
+            f"`{format_large_number(local_data['xp_local'])}/{format_large_number(xp_local_needed)}` {create_progress_bar(local_data['xp_local'], xp_local_needed)}\n"
+            f"{ICON_GLOBAL} **Toàn cầu (Lv.{global_profile['level_global']}):**\n"
+            f"`{format_large_number(global_profile['xp_global'])}/{format_large_number(xp_global_needed)}` {create_progress_bar(global_profile['xp_global'], xp_global_needed)}"
         )
-        embed.add_field(name=f"{ICON_LOCAL} Cấp Độ Server (Lv.{local_data['level_local']})", value=level_info, inline=False)
+        embed.add_field(name="Cấp Độ & Kinh Nghiệm", value=level_info, inline=False)
         
-        # HÀNG 3: SINH TỒN
+        # --- HÀNG 3: TRẠNG THÁI NHÂN VẬT ---
         survival_info = (
-            f"{ICON_HEALTH} Máu: `{local_data['health']}/100` {create_progress_bar(local_data['health'], 100)}\n"
-            f"{ICON_HUNGER} Độ no: `{local_data['hunger']}/100` {create_progress_bar(local_data['hunger'], 100)}\n"
-            f"{ICON_ENERGY} Năng lượng: `{local_data['energy']}/100` {create_progress_bar(local_data['energy'], 100)}"
+            f"{ICON_HEALTH} **Máu:** `{local_data['health']}/100` {create_progress_bar(local_data['health'], 100)}\n"
+            f"{ICON_HUNGER} **Độ no:** `{local_data['hunger']}/100` {create_progress_bar(local_data['hunger'], 100)}\n"
+            f"{ICON_ENERGY} **Năng lượng:** `{local_data['energy']}/100` {create_progress_bar(local_data['energy'], 100)}\n"
+            f"{ICON_WANTED} **Điểm Nghi ngờ:** `{global_profile['wanted_level']:.2f}`"
         )
-        embed.add_field(name="Trạng Thái Nhân Vật", value=survival_info, inline=False)
+        embed.add_field(name="Trạng Thái", value=survival_info, inline=False)
         
-        # FOOTER
-        embed.set_footer(text=f"ID: {user.id} • Điểm nghi ngờ: {global_profile['wanted_level']:.2f}")
+        embed.set_footer(text=f"ID: {user.id} • Dữ liệu tại server {interaction.guild.name}")
 
         view = InfoView(interaction, is_mafia=False, is_police=False, is_owner=is_owner)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
