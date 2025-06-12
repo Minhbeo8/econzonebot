@@ -1,0 +1,28 @@
+{
+  "work": {
+    "jobs": [
+      {"name": "Lau dọn vệ sinh", "min_earn": 100, "max_earn": 250},
+      {"name": "Phụ hồ", "min_earn": 150, "max_earn": 350},
+      {"name": "Bán hàng online", "min_earn": 200, "max_earn": 450},
+      {"name": "Viết code dạo", "min_earn": 300, "max_earn": 600}
+    ]
+  },
+  "fish": {
+    "fishes": [
+      {"name": "Cá chép", "value": 50, "rarity": "Thường"},
+      {"name": "Cá rô", "value": 75, "rarity": "Thường"},
+      {"name": "Cá lóc", "value": 150, "rarity": "Không phổ biến"},
+      {"name": "Cá diêu hồng", "value": 220, "rarity": "Không phổ biến"},
+      {"name": "Cá tầm", "value": 450, "rarity": "Hiếm"},
+      {"name": "Cá mập", "value": 1000, "rarity": "Cực hiếm"}
+    ]
+  },
+  "crime": {
+    "scenarios": [
+      {"name": "Móc túi một du khách", "min_earn": 200, "max_earn": 500, "success_chance": 0.6},
+      {"name": "Cướp một cửa hàng tiện lợi", "min_earn": 500, "max_earn": 1500, "success_chance": 0.4},
+      {"name": "Đột nhập vào một ngôi nhà", "min_earn": 800, "max_earn": 2500, "success_chance": 0.3}
+    ],
+    "failure_fine": {"min": 200, "max": 800}
+  }
+}
