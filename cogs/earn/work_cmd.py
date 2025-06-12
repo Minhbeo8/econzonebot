@@ -3,7 +3,7 @@ from nextcord.ext import commands
 import random
 import asyncio
 from core.database_sqlite import Database
-# Sửa đổi: import thêm hàm load_activities_data và format_time_long
+from core.utils import require_travel_check
 from core.utils import format_time_long, load_activities_data
 from core.icons import Icons
 
@@ -16,6 +16,7 @@ class WorkCommand(commands.Cog):
         self.activities_data = load_activities_data()
 
     @nextcord.slash_command(name="work", description="Làm việc để kiếm Ecoin.")
+    @require_travel_check
     async def work(self, interaction: nextcord.Interaction):
         user_id = interaction.user.id
         
