@@ -20,8 +20,8 @@
     link = "🔗"
     
     # === TIỀN TỆ & KINH TẾ ===
-    ecoin = "💰"
-    ecobit = "💸"
+    ecoin = "💵"
+    ecobit = "💶"
     wallet = "👛"
     bank = "🏦"
     deposit = "📥"
