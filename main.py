@@ -47,6 +47,11 @@ if __name__ == "__main__":
         main_logger.critical(f"Không thể tải dữ liệu ban đầu: {e}", exc_info=True)
         sys.exit(1)
 
+    # Khởi tạo Travel Manager và gắn vào bot
+    main_logger.info("Đang khởi tạo Travel Manager...")
+    bot.travel_manager = TravelManager(bot) # <--- THÊM VÀO ĐÂY
+    main_logger.info("Travel Manager đã sẵn sàng.")
+
     # Tải Bot Token từ biến môi trường
     actual_bot_token = os.getenv("BOT_TOKEN")
     if not actual_bot_token:
