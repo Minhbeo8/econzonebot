@@ -1,49 +1,35 @@
-# bot/cogs/economy/balance_cmd.py
 import nextcord
 from nextcord.ext import commands
-import logging
-from core.utils import try_send
-from core.icons import ICON_PROFILE, ICON_ERROR, ICON_MONEY_BAG, ICON_TIEN_SACH, ICON_TIEN_LAU, ICON_BANK, ICON_TICKET
+from core.database_sqlite import Database
+from core.icons import Icons # Sửa đổi
 
-logger = logging.getLogger(__name__)
-
-class BalanceCommandCog(commands.Cog, name="Balance Command"):
-    def __init__(self, bot: commands.Bot):
+class BalanceCommand(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
-        logger.info(f"BalanceCommandCog (SQLite Ready) initialized.")
+        self.db = Database()
 
-    @commands.command(name='balance', aliases=['bal', 'cash', 'money', '$'])
-    async def balance(self, ctx: commands.Context, user: nextcord.Member = None):
-        """Xem số dư Ví Local và Ví Global (Bank) của bạn hoặc người khác."""
-        target_user = user or ctx.author
-        if not ctx.guild:
-            await try_send(ctx, content=f"{ICON_ERROR} Vui lòng sử dụng lệnh này trong một server.")
+    @nextcord.slash_command(name="balance", description="Kiểm tra số dư tài khoản của bạn hoặc người khác.")
+    async def balance(self, interaction: nextcord.Interaction, user: nextcord.Member = None):
+        target_user = user or interaction.user
+        
+        user_balance = self.db.get_balance(target_user.id)
+        
+        if not user_balance:
+            # Sửa đổi
+            await interaction.response.send_message(f"{Icons.error} Không tìm thấy dữ liệu cho người dùng này.", ephemeral=True)
             return
 
-        try:
-            global_profile = self.bot.db.get_or_create_global_user_profile(target_user.id)
-            local_data = self.bot.db.get_or_create_user_local_data(target_user.id, ctx.guild.id)
-            
-            bank_balance = global_profile['bank_balance']
-            earned_balance = local_data['local_balance_earned']
-            adadd_balance = local_data['local_balance_adadd']
-            total_local_balance = earned_balance + adadd_balance
-            
-            embed = nextcord.Embed(title=f"{ICON_PROFILE} Tổng Quan Tài Sản của {target_user.display_name}", color=nextcord.Color.gold())
-            embed.set_thumbnail(url=target_user.display_avatar.url)
-            embed.add_field(
-                name=f"{ICON_MONEY_BAG} Ví Local (tại Server: {ctx.guild.name})",
-                value=f"**Tổng cộng:** `{total_local_balance:,}`\n"
-                      f"  {ICON_TIEN_SACH} Tiền Sạch (Earned): `{earned_balance:,}`\n"
-                      f"  {ICON_TIEN_LAU} Tiền Lậu (Admin-add): `{adadd_balance:,}`",
-                inline=False
-            )
-            embed.add_field(name=f"{ICON_BANK} Ví Global (Bank)", value=f"`{bank_balance:,}`", inline=True)
-            await try_send(ctx, embed=embed)
+        embed = nextcord.Embed(
+            title=f"Số dư của {target_user.display_name}",
+            color=nextcord.Color.gold()
+        )
+        embed.set_thumbnail(url=target_user.display_avatar.url)
+        
+        # Sửa đổi
+        embed.add_field(name=f"{Icons.wallet} Ví (Local)", value=f"`{user_balance['ecoin']:,}` {Icons.ecoin}\n`{user_balance['ecobit']:,}` {Icons.ecobit}", inline=True)
+        embed.add_field(name=f"{Icons.bank} Ngân hàng (Global)", value=f"`{user_balance['bank']:,}` {Icons.ecoin}", inline=True)
+        
+        await interaction.response.send_message(embed=embed)
 
-        except Exception as e:
-            logger.error(f"Lỗi trong lệnh 'balance' cho user {target_user.name}: {e}", exc_info=True)
-            await try_send(ctx, content=f"{ICON_ERROR} Đã xảy ra lỗi khi xem số dư của {target_user.mention}.")
-
-def setup(bot: commands.Bot):
-    bot.add_cog(BalanceCommandCog(bot))
+def setup(bot):
+    bot.add_cog(BalanceCommand(bot))
