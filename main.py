@@ -13,9 +13,9 @@ import threading
 from dashboard import run_flask_app
 from core.bot import bot, load_all_cogs 
 from core.logger import setup_logging 
-import core.database_sqlite as db_sqlite # Chỉ import module SQLite
+import core.database_sqlite as db_sqlite
+from core.travel_manager import TravelManager
 
-# Thiết lập logging
 setup_logging(bot_event_loop=bot.loop) 
 main_logger = logging.getLogger(__name__) 
 
