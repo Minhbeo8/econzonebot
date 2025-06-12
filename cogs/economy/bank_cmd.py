@@ -3,7 +3,7 @@ import nextcord
 from nextcord.ext import commands
 import logging
 from core.utils import try_send, format_large_number
-from core.icons import ICON_BANK, ICON_ERROR
+from core.icons import Icons
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class BankCommandCog(commands.Cog, name="Bank Command"):
             bank_balance = global_profile['bank_balance']
             
             embed = nextcord.Embed(
-                title=f"{ICON_BANK} Số Dư Ngân Hàng của {target_user.display_name}",
+                title=f"{Icons.bank} Số Dư Ngân Hàng của {target_user.display_name}",
                 description=f"**Số dư hiện tại:** `{format_large_number(bank_balance)}`",
                 color=nextcord.Color.blue()
             )
