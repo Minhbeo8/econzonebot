@@ -59,7 +59,19 @@ def get_player_title(local_level: int, wanted_level: float) -> str:
     if local_level > 30: return "🏆 Lão Làng"
     if local_level > 15: return "🥇 Dân Chơi"
     return "🌱 Tấm Chiếu Mới"
-
+def load_activities_data():
+    """Tải dữ liệu hoạt động từ file activities.json."""
+    try:
+        
+        activities_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'activities.json')
+        with open(activities_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("LỖI: không tìm thấy file activities.json.")
+        return None
+    except json.JSONDecodeError:
+        print("LỖI: file activities.json có định dạng không hợp lệ.")
+        return None
 def format_relative_timestamp(future_timestamp: float) -> str:
     """
     Chuyển đổi một timestamp trong tương lai thành định dạng timestamp tương đối của Discord.
