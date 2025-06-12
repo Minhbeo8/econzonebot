@@ -4,8 +4,9 @@ import logging
 from typing import Optional, Union
 import json
 from datetime import datetime, timedelta
-from rapidfuzz import fuzz, process # <--- ĐÃ SỬA
-import os # <--- ĐÃ THÊM
+from rapidfuzz import fuzz, process
+import os
+import functools
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ async def try_send(
         return None
 
     try:
-        # Lệnh slash có tham số ephemeral
         if isinstance(ctx, nextcord.Interaction) and ephemeral:
             return await send_method(content=content, embed=embed, view=view, ephemeral=True)
         else:
@@ -61,10 +61,10 @@ def get_player_title(local_level: int, wanted_level: float) -> str:
     if local_level > 30: return "🏆 Lão Làng"
     if local_level > 15: return "🥇 Dân Chơi"
     return "🌱 Tấm Chiếu Mới"
+
 def load_activities_data():
     """Tải dữ liệu hoạt động từ file activities.json."""
     try:
-        
         activities_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'activities.json')
         with open(activities_path, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -74,26 +74,59 @@ def load_activities_data():
     except json.JSONDecodeError:
         print("LỖI: file activities.json có định dạng không hợp lệ.")
         return None
+
 def format_relative_timestamp(future_timestamp: float) -> str:
     """
     Chuyển đổi một timestamp trong tương lai thành định dạng timestamp tương đối của Discord.
-    Ví dụ: <t:1678886400:R> sẽ hiển thị là "in 2 hours".
     """
     return f"<t:{int(future_timestamp)}:R>"
 
-def require_travel_check(func):
-    """
-    Decorator để kiểm tra xem người dùng có đang trong trạng thái 'di chuyển' hay không.
-    """
-    async def wrapper(self, ctx: commands.Context, *args, **kwargs):        
-        await func(self, ctx, *args, **kwargs)
-    return wrapper
 def find_best_match(query: str, choices: list, score_cutoff: int = 75) -> Optional[str]:
     """
     Tìm chuỗi gần đúng nhất trong một danh sách.
-    Trả về chuỗi phù hợp nhất nếu độ tương đồng > score_cutoff, ngược lại trả về None.
     """
     best_match = process.extractOne(query, choices, score_cutoff=score_cutoff)
     if best_match:
         return best_match[0]
     return None
+
+# === DECORATOR CHO HỆ THỐNG DU LỊCH ===
+def require_travel_check(func):
+    """
+    Decorator để kiểm tra xem người dùng có 'vượt biên trái phép' không.
+    Nó sẽ gọi TravelManager để thực hiện logic kiểm tra.
+    """
+    @functools.wraps(func)
+    async def wrapper(self, ctx: Union[commands.Context, nextcord.Interaction], *args, **kwargs):
+        # Đảm bảo bot có travel_manager, nếu không thì báo lỗi và cho qua
+        if not hasattr(self.bot, 'travel_manager'):
+            logger.error("LỖI: bot.travel_manager chưa được khởi tạo! Bỏ qua kiểm tra du lịch.")
+            await func(self, ctx, *args, **kwargs)
+            return
+
+        # Lấy user và guild id từ context (hỗ trợ cả slash và prefix commands)
+        user_id = ctx.user.id
+        guild_id = ctx.guild.id
+
+        # Gọi 'bộ não' để kiểm tra
+        is_illegal, reason = await self.bot.travel_manager.check_travel_legality(user_id, guild_id)
+
+        if is_illegal:
+            # Nếu vi phạm, gửi tin nhắn cảnh báo và dừng lệnh
+            embed = nextcord.Embed(
+                title="🚨 BỊ CHẶN BỞI CẢNH SÁT BIÊN PHÒNG 🚨",
+                description=f"Bạn không thể thực hiện hành động này.\n**Lý do:** {reason}.",
+                color=nextcord.Color.red()
+            )
+            await try_send(ctx, embed=embed, ephemeral=True)
+            return
+
+        # Nếu hợp lệ, cho phép lệnh gốc được thực thi
+        await func(self, ctx, *args, **kwargs)
+
+        # Sau khi lệnh thực thi thành công, cập nhật 'dấu chân' của người chơi
+        await self.bot.loop.run_in_executor(
+            None, self.bot.db.update_last_active_guild, user_id, guild_id
+        )
+
+    return wrapper
