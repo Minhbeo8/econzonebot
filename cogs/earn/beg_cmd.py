@@ -1,57 +1,67 @@
 import nextcord
 from nextcord.ext import commands
 import random
-from datetime import datetime
-import logging
+import asyncio
+from core.database_sqlite import Database
+# Sửa đổi: import thêm hàm load_activities_data
+from core.utils import format_time_long, load_activities_data
+from core.icons import Icons
 
-from core.utils import try_send, format_relative_timestamp, require_travel_check
-# SỬA: Import các biến cấu hình mới
-from core.config import BEG_COOLDOWN, BEG_SUCCESS_RATE, BEG_REWARD_MIN, BEG_REWARD_MAX
-from core.icons import ICON_LOADING, ICON_GIFT, ICON_WARNING, ICON_BANK_MAIN
-
-logger = logging.getLogger(__name__)
-
-class BegCommandCog(commands.Cog, name="Beg Command"):
-    def __init__(self, bot: commands.Bot):
+class CrimeCommand(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
-        logger.info("BegCommandCog (SQLite Ready) initialized.")
+        self.db = Database()
+        self.cooldowns = {}
+        # Sửa đổi: Tải dữ liệu hoạt động khi cog khởi chạy
+        self.activities_data = load_activities_data()
 
-    @commands.command(name='beg', aliases=['b'])
-    @commands.guild_only()
-    @require_travel_check
-    async def beg(self, ctx: commands.Context):
-        author_id = ctx.author.id
-        
-        now = datetime.now().timestamp()
-        last_beg = self.bot.db.get_cooldown(author_id, "beg")
-        
-        if last_beg and now < last_beg + BEG_COOLDOWN:
-            cooldown_end_timestamp = last_beg + BEG_COOLDOWN
-            relative_time_str = format_relative_timestamp(cooldown_end_timestamp)
-            await try_send(ctx, content=f"{ICON_LOADING} Đừng xin liên tục thế chứ! Hãy quay lại sau ({relative_time_str}).")
+    @nextcord.slash_command(name="crime", description="Thực hiện một phi vụ phạm pháp để kiếm Ecobit.")
+    async def crime(self, interaction: nextcord.Interaction):
+        user_id = interaction.user.id
+
+        cooldown_time = self.db.get_cooldown('crime')
+        if user_id in self.cooldowns and (asyncio.get_event_loop().time() - self.cooldowns[user_id]) < cooldown_time:
+            remaining_time = cooldown_time - (asyncio.get_event_loop().time() - self.cooldowns[user_id])
+            await interaction.response.send_message(f"{Icons.clock} Bạn vừa mới đi tù về, hãy chờ {format_time_long(int(remaining_time))} nữa.", ephemeral=True)
             return
 
-        self.bot.db.set_cooldown(author_id, "beg", now)
-        
-        # SỬA: Sử dụng tỉ lệ thành công từ config
-        if random.random() < BEG_SUCCESS_RATE: 
-            # SỬA: Sử dụng khoảng tiền từ config
-            earnings = random.randint(BEG_REWARD_MIN, BEG_REWARD_MAX)
-            
-            # Logic gốc của bạn: cộng tiền vào bank
-            user_profile = self.bot.db.get_or_create_global_user_profile(author_id)
-            new_balance = user_profile['bank_balance'] + earnings
-            # Chú ý: Hàm update_balance có vẻ không tồn tại trong db của bạn, tôi giả định nó là update_global_balance
-            # Nếu bot báo lỗi ở đây, chúng ta sẽ xem lại hàm CSDL. Tạm thời dùng hàm phù hợp nhất.
-            self.bot.db.update_global_balance(author_id, 'bank_balance', earnings)
-            
-            # Lấy lại số dư mới nhất để hiển thị chính xác
-            updated_profile = self.bot.db.get_or_create_global_user_profile(author_id)
-            final_balance = updated_profile['bank_balance']
+        self.cooldowns[user_id] = asyncio.get_event_loop().time()
 
-            await try_send(ctx, content=f"{ICON_GIFT} Một người tốt bụng đã cho {ctx.author.mention} **{earnings:,}**! Số dư {ICON_BANK_MAIN} của bạn giờ là: **{final_balance:,}**")
-        else:
-            await try_send(ctx, content=f"{ICON_WARNING} Không ai cho {ctx.author.mention} tiền cả. 😢")
+        # Sửa đổi: Lấy dữ liệu các phi vụ từ file JSON
+        if not self.activities_data or 'crime' not in self.activities_data:
+            await interaction.response.send_message(f"{Icons.error} Lỗi: Không thể tải dữ liệu phạm tội.", ephemeral=True)
+            return
+
+        scenarios = self.activities_data['crime']['scenarios']
+        selected_scenario = random.choice(scenarios)
+        
+        scenario_name = selected_scenario['name']
+        success_chance = selected_scenario['success_chance']
+
+        if random.random() < success_chance:
+            min_earn = selected_scenario['min_earn']
+            max_earn = selected_scenario['max_earn']
+            amount = random.randint(min_earn, max_earn)
             
-def setup(bot: commands.Bot):
-    bot.add_cog(BegCommandCog(bot))
+            self.db.update_balance(user_id, amount, 'ecobit')
+            embed = nextcord.Embed(
+                title=f"{Icons.crime} Phi vụ thành công",
+                description=f"Bạn đã thực hiện '{scenario_name}' trót lọt và kiếm được `{amount}` {Icons.ecobit}.",
+                color=nextcord.Color.dark_purple()
+            )
+        else:
+            min_fine = self.activities_data['crime']['failure_fine']['min']
+            max_fine = self.activities_data['crime']['failure_fine']['max']
+            fine = random.randint(min_fine, max_fine)
+
+            self.db.update_balance(user_id, -fine, 'ecoin')
+            embed = nextcord.Embed(
+                title=f"{Icons.error} Bị cảnh sát tóm",
+                description=f"Bạn đã thất bại trong phi vụ '{scenario_name}' và bị phạt `{fine}` {Icons.ecoin}.",
+                color=nextcord.Color.red()
+            )
+
+        await interaction.response.send_message(embed=embed)
+
+def setup(bot):
+    bot.add_cog(CrimeCommand(bot))
