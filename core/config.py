@@ -12,7 +12,7 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 # --- Cấu hình Bot cơ bản ---
 COMMAND_PREFIX = "!"
 BOT_OWNER_IDS = [1370417047070048276] 
-
+BOT_VERSION = "v0.2-stable"
 # --- Thời gian chờ (giây) ---
 WORK_COOLDOWN = 3600
 DAILY_COOLDOWN = 86400
