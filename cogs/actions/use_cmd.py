@@ -3,8 +3,7 @@ import nextcord
 from nextcord.ext import commands
 import logging
 from core.utils import try_send
-from core.icons import ICON_SUCCESS, ICON_ERROR, ICON_INFO, ICON_SURVIVAL
-
+from core.icons import Icons
 logger = logging.getLogger(__name__)
 
 class UseCommandCog(commands.Cog, name="Use Command"):
@@ -25,12 +24,12 @@ class UseCommandCog(commands.Cog, name="Use Command"):
             item_to_remove = self.bot.db.find_item_in_inventory(author_id, item_id_to_use, guild_id)
             
             if not item_to_remove:
-                await try_send(ctx, content=f"{ICON_ERROR} Bạn không có vật phẩm `{item_id_to_use}`.")
+                await try_send(ctx, content=f"{Icons.error} Bạn không có vật phẩm `{item_id_to_use}`.")
                 return
 
             item_details = self.bot.item_definitions.get(item_id_to_use, {})
             if "effect" not in item_details:
-                await try_send(ctx, content=f"{ICON_ERROR} Bạn không thể 'dùng' vật phẩm này.")
+                await try_send(ctx, content=f"{Icons.error} Bạn không thể 'dùng' vật phẩm này.")
                 return
             
             # Lấy dữ liệu local để biết chỉ số hiện tại
@@ -58,12 +57,12 @@ class UseCommandCog(commands.Cog, name="Use Command"):
             stat_name_vn = {"health": "Máu", "hunger": "Độ no", "energy": "Năng lượng"}
             stat_name = stat_name_vn.get(stat_to_change, stat_to_change)
             
-            await try_send(ctx, content=f"{ICON_SUCCESS} Bạn đã dùng **{item_details['description']}** và hồi phục **{value_to_add} {stat_name}** {ICON_SURVIVAL}.")
+            await try_send(ctx, content=f"{Icons.success} Bạn đã dùng **{item_details['description']}** và hồi phục **{value_to_add} {stat_name}** {ICON_SURVIVAL}.")
             logger.info(f"User {author_id} used {item_id_to_use}, restored {value_to_add} {stat_to_change}.")
 
         except Exception as e:
             logger.error(f"Error in 'use' command for user {author_id}: {e}", exc_info=True)
-            await try_send(ctx, content=f"{ICON_ERROR} Đã xảy ra lỗi khi bạn sử dụng vật phẩm.")
+            await try_send(ctx, content=f"{Icons.error} Đã xảy ra lỗi khi bạn sử dụng vật phẩm.")
 
 def setup(bot: commands.Bot):
     bot.add_cog(UseCommandCog(bot))
