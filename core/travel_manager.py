@@ -1,57 +1,57 @@
-import nextcord
-from nextcord.ext import commands
-import logging
-from functools import wraps
+# core/travel_manager.py
 
-# SỬA: Import trực tiếp từ database_sqlite
-from .database_sqlite import get_db_connection, get_or_create_user_local_data
-from .config import COMMAND_PREFIX
-from .icons import ICON_ERROR
+import logging
 
 logger = logging.getLogger(__name__)
 
-def require_travel_check(func):
-    """
-    Decorator để kiểm tra xem người dùng có cần phải di chuyển đến server hiện tại không.
-    Nếu có, nó sẽ ngăn lệnh thực thi và gửi một tin nhắn hướng dẫn.
-    """
-    @wraps(func)
-    async def wrapper(self, ctx: commands.Context, *args, **kwargs):
-        if not ctx.guild:
-            # Bỏ qua check nếu lệnh không ở trong server (ví dụ: DM)
-            return await func(self, ctx, *args, **kwargs)
+class TravelManager:
+    def __init__(self, bot):
+        """
+        Khởi tạo TravelManager với bot instance để truy cập CSDL và các thành phần khác.
+        """
+        self.bot = bot
 
-        user_id = ctx.author.id
-        current_guild_id = ctx.guild.id
+    async def check_travel_legality(self, user_id: int, current_guild_id: int) -> tuple[bool, str | None]:
+        """
+        Kiểm tra xem một hành động của người dùng có phải là "vượt biên trái phép" hay không.
+        Sử dụng các hàm từ bot.db đã được định nghĩa ở bước trước.
 
-        # Lấy vị trí hiện tại của người dùng từ CSDL
-        conn = get_db_connection()
+        Trả về:
+            tuple[bool, str | None]: Một tuple chứa (is_illegal, reason)
+            - (False, None): Hành động hợp lệ.
+            - (True, "lý do"): Vi phạm, cùng với lý do tại sao.
+        """
+        # Lấy thông tin từ CSDL một cách an toàn qua luồng của bot
         try:
-            profile_cursor = conn.execute("SELECT current_guild_id FROM users WHERE user_id = ?", (user_id,))
-            user_profile = profile_cursor.fetchone()
-        finally:
-            conn.close()
+            # Đảm bảo get_or_create_user được gọi để người dùng chắc chắn tồn tại
+            await self.bot.loop.run_in_executor(None, self.bot.db.get_or_create_user, user_id, current_guild_id)
+            
+            last_guild_id = await self.bot.loop.run_in_executor(
+                None, self.bot.db.get_last_active_guild, user_id
+            )
+        except Exception as e:
+            logger.error(f"Lỗi khi truy vấn CSDL trong TravelManager cho user {user_id}: {e}", exc_info=True)
+            # Mặc định là hợp lệ nếu có lỗi CSDL để tránh khóa người dùng oan
+            return (False, None)
 
-        user_location_id = user_profile['current_guild_id'] if user_profile else None
+        # Trường hợp 1: Người chơi mới (chưa có last_guild_id) hoặc vẫn ở server cũ.
+        # Coi last_guild_id = 0 là người chơi mới đối với hệ thống này.
+        if not last_guild_id or last_guild_id == current_guild_id:
+            return (False, None)
+
+        # Trường hợp 2: Người chơi đã di chuyển sang một server mới (vượt biên)
+        # Bây giờ, kiểm tra xem họ có đủ giấy tờ (vật phẩm) không.
+        inventory = await self.bot.loop.run_in_executor(
+            None, self.bot.db.get_user_inventory, user_id
+        )
+
+        # Điều kiện để bị bắt: Vượt biên nhưng thiếu "vé máy bay"
+        # Giả sử trong items.json, key của vé máy bay là 'plane_ticket'
+        if 'plane_ticket' not in inventory or inventory.get('plane_ticket', 0) < 1:
+            return (True, "vượt biên trái phép không có vé máy bay")
         
-        # Nếu vị trí hiện tại của người dùng không phải là server này
-        if user_location_id != current_guild_id:
-            try:
-                target_guild = self.bot.get_guild(user_location_id)
-                guild_name = target_guild.name if target_guild else f"một server khác (ID: {user_location_id})"
-                
-                embed = nextcord.Embed(
-                    title=f"{ICON_ERROR} Sai Vị Trí",
-                    description=f"Bạn đang ở **{guild_name}**. Bạn cần phải di chuyển đến server **{ctx.guild.name}** để sử dụng lệnh này.",
-                    color=nextcord.Color.red()
-                )
-                embed.add_field(name="Cách di chuyển?", value=f"Sử dụng lệnh `/travel <tên_server>`.")
-                await ctx.send(embed=embed)
-            except Exception as e:
-                logger.error(f"Lỗi khi gửi tin nhắn travel check: {e}")
-                await ctx.send(f"{ICON_ERROR} Bạn cần di chuyển đến server này trước khi dùng lệnh.")
-            return # Dừng không cho thực thi lệnh gốc
+        # Nếu có vé máy bay, logic trừ vé sẽ được xử lý sau khi kiểm tra thành công
+        # (trong decorator hoặc lệnh) để đảm bảo vé chỉ bị trừ khi lệnh thực sự chạy.
 
-        # Nếu vị trí đã đúng, thực thi lệnh như bình thường
-        return await func(self, ctx, *args, **kwargs)
-    return wrapper
+        # Nếu tất cả kiểm tra đều qua, việc di chuyển là hợp lệ.
+        return (False, None)
