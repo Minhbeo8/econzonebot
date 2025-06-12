@@ -5,11 +5,11 @@ import math
 from typing import List, Dict, Any
 
 from core.utils import try_send, format_large_number
-from core.icons import ICON_SHOP, ICON_ERROR, ICON_INFO
+from core.icons import Icons
 from core.config import COMMAND_PREFIX
 
 logger = logging.getLogger(__name__)
-
+await ctx.send(f"{Icons.SHOP} Cửa hàng đã được mở!")
 ITEMS_PER_PAGE = 5
 
 class ShopView(nextcord.ui.View):
