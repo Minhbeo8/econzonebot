@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # Khởi tạo Travel Manager và gắn vào bot
     main_logger.info("Đang khởi tạo Travel Manager...")
-    bot.travel_manager = TravelManager(bot) # <--- THÊM VÀO ĐÂY
+    bot.travel_manager = TravelManager(bot) 
     main_logger.info("Travel Manager đã sẵn sàng.")
 
     # Tải Bot Token từ biến môi trường
