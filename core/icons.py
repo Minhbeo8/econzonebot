@@ -1,6 +1,6 @@
 # minhbeo8/econzonebot/Minhbeo8-econzonebot-b4ca6d7847536c7240ef6a17c68866ffdaf98915/core/icons.py
 
-class Icons:
+
     # === BIỂU TƯỢNG CHUNG & GIAO DIỆN ===
     loading = "<a:loading:123456789012345678>"  # TODO: Thay ID emoji động của bạn vào đây
     success = "✅"
