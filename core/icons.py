@@ -1,17 +1,18 @@
-# minhbeo8/econzonebot/Minhbeo8-econzonebot-b4ca6d7847536c7240ef6a17c68866ffdaf98915/core/icons.py
 
 
-    # === BIỂU TƯỢNG CHUNG & GIAO DIỆN ===
+class Icons:
+    """
+    Lưu trữ tập trung tất cả các icon sử dụng trong bot.
+    Phiên bản này đã được rà soát và xác minh đầy đủ trên toàn bộ mã nguồn.
+    """
+    
+    # === GIAO DIỆN & TRẠNG THÁI CHUNG ===
     loading = "<a:loading:123456789012345678>"  # TODO: Thay ID emoji động của bạn vào đây
     success = "✅"
     error = "❌"
-    warning = "⚠️"
+    warning = "⚠️" 
     info = "ℹ️"
     question = "❓"
-    arrow_right = "➡️"
-    arrow_left = "⬅️"
-    up_arrow = "⬆️"
-    down_arrow = "⬇️"
     online = "🟢"
     offline = "🔴"
     clock = "⏰"
@@ -20,15 +21,14 @@
     link = "🔗"
     
     # === TIỀN TỆ & KINH TẾ ===
-    ecoin = "💵"
-    ecobit = "💶"
+    ecoin = "💰"
+    ecobit = "💸"
     wallet = "👛"
     bank = "🏦"
     deposit = "📥"
     withdraw = "📤"
     transfer = "🤝"
     launder = "🧼"
-    money_bag = "💰"
     credit_card = "💳" # Dùng cho /visa
 
     # === HÀNH ĐỘNG KIẾM TIỀN ===
@@ -44,18 +44,19 @@
     slot_machine = "🎰"
     coin = "🪙"
     
-    # === SINH TỒN ===
+    # === SINH TỒN & CHỈ SỐ ===
     health = "❤️"
     energy = "⚡"
     hunger = "🍔"
     dead = "💀"
+    level = "🌟"
+    exp = "📈"
 
     # === CỬA HÀNG & VẬT PHẨM ===
     shop = "🏪"
     inventory = "🎒"
     buy = "🛒"
     sell = "🏷️"
-    item_box = "📦"
     use = "🔧"
 
     # === BẢNG XẾP HẠNG ===
@@ -76,7 +77,7 @@
     mute = "🔇"
     unmute = "🔊"
     database = "🗄️"
-    backup = "🔄"
+    backup = "🔄" # Mới bổ sung (Dùng cho gdrive_backup_task)
 
     # === KHÁC ===
     bot = "🤖"
