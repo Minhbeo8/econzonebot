@@ -1,69 +1,44 @@
-# bot/cogs/test_slash_cog.py
+# minhbeo8/econzonebot/Minhbeo8-econzonebot-b4ca6d7847536c7240ef6a17c68866ffdaf98915/cogs/test_slash_cog.py
+
 import nextcord
 from nextcord.ext import commands
-import traceback
-import time # Để đo thời gian
-from core.icons import ICON_INFO, ICON_ERROR, ICON_PING # Import ICON_PING mới
+from core.bot import BOT_VERSION
+# Sửa lại import: Thay vì import từng icon, ta import cả class Icons
+from core.icons import Icons 
 
-class PingCommandCog(commands.Cog, name="Ping Command"): # Đổi tên class Cog
-    def __init__(self, bot: commands.Bot):
+class TestSlashCog(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
-        print(f"{ICON_INFO} [PING COG] PingCommandCog initialized.")
 
-    @nextcord.slash_command(name="ping", description="Kiểm tra độ trễ của bot tới Discord.")
-    async def ping(self, interaction: nextcord.Interaction): # Đổi tên hàm cho khớp lệnh
-        print(f"{ICON_INFO} [PING COG] /{interaction.application_command.name} invoked by {interaction.user.name}")
-        try:
-            
-            if not interaction.response.is_done():
-                await interaction.response.defer(ephemeral=False) 
-            print(f"{ICON_INFO} [PING COG] /{interaction.application_command.name} deferred.")
+    @nextcord.slash_command(name="test", description="Test bot functionality.")
+    async def test_slash(self, interaction: nextcord.Interaction):
+        """Lệnh test chính."""
+        pass
 
-            # Ghi lại thời điểm bắt đầu gửi tin nhắn đầu tiên (sau khi defer)
-            start_time = time.monotonic() # Dùng monotonic cho khoảng thời gian chính xác hơn
+    @test_slash.subcommand(name="ping", description="Kiểm tra độ trễ của bot.")
+    async def ping(self, interaction: nextcord.Interaction):
+        latency = self.bot.latency * 1000  # Convert to ms
+        # Sử dụng icon đúng cách: Icons.bot
+        embed = nextcord.Embed(
+            title=f"{Icons.bot} Pong!",
+            description=f"Độ trễ của bot là: `{latency:.2f}ms`",
+            color=nextcord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
 
+    @test_slash.subcommand(name="info", description="Hiển thị thông tin về bot.")
+    async def info(self, interaction: nextcord.Interaction):
+        # Sử dụng icon đúng cách: Icons.admin
+        embed = nextcord.Embed(
+            title=f"{Icons.admin} Thông tin Bot",
+            description="Đây là bot kinh tế cho EconZone.",
+            color=nextcord.Color.blue()
+        )
+        embed.add_field(name="Phiên bản", value=f"`{BOT_VERSION}`", inline=True)
+        embed.add_field(name="Thư viện", value="`Nextcord`", inline=True)
+        embed.add_field(name="Người phát triển", value="`minhbeo`", inline=True)
+        
+        await interaction.response.send_message(embed=embed)
 
-            await interaction.followup.send(content=f"{ICON_PING} Pong! Đang đo độ trễ...")
-            
-            # Ghi lại thời điểm sau khi tin nhắn tạm thời đã được gửi
-            end_time = time.monotonic()
-
-            # Tính toán độ trễ phản hồi (round-trip cho việc gửi tin nhắn followup)
-            round_trip_latency = round((end_time - start_time) * 1000) # Chuyển sang miligiây
-
-            # Lấy độ trễ WebSocket (API Latency)
-            websocket_latency = round(self.bot.latency * 1000) # Chuyển sang miligiây
-
-            # Tạo Embed để hiển thị kết quả giống ảnh
-            embed = nextcord.Embed(
-                title=f"{ICON_PING} Pong!",
-                color=nextcord.Color.green() # Bạn có thể chọn màu khác
-            )
-            embed.add_field(name="Độ trễ phản hồi", value=f"`{round_trip_latency}ms`", inline=False)
-            embed.add_field(name="Độ trễ API (WebSocket)", value=f"`{websocket_latency}ms`", inline=False)
-            
-            # Chỉnh sửa tin nhắn gốc đã gửi (tin nhắn "Đang đo độ trễ...")
-            await interaction.edit_original_message(content=None, embed=embed) # Bỏ content cũ, thay bằng embed
-            
-            print(f"{ICON_INFO} [PING COG] /{interaction.application_command.name} response edited. Roundtrip: {round_trip_latency}ms, WS: {websocket_latency}ms")
-
-        except Exception as e:
-            error_message_for_user = f"{ICON_ERROR} Rất tiếc, đã có lỗi xảy ra khi thực hiện lệnh ping."
-            print(f"{ICON_ERROR} [PING COG] Error in /{interaction.application_command.name}:")
-            traceback.print_exc()
-            try:
-                # Cố gắng chỉnh sửa tin nhắn gốc với thông báo lỗi
-                if not interaction.is_expired():
-                     await interaction.edit_original_message(content=error_message_for_user, embed=None, view=None) # Xóa embed/view nếu có
-            except Exception as followup_exception:
-                # Nếu edit cũng lỗi, thử gửi followup mới (ít khả năng hơn)
-                print(f"{ICON_ERROR} [PING COG] Failed to edit original message with error. Attempting new followup: {followup_exception}")
-                try:
-                    if not interaction.is_expired():
-                        await interaction.followup.send(content=error_message_for_user, ephemeral=True)
-                except Exception as final_error:
-                    print(f"{ICON_ERROR} [PING COG] Failed to send any error followup: {final_error}")
-
-
-def setup(bot: commands.Bot):
-    bot.add_cog(PingCommandCog(bot)) # Đảm bảo tên class Cog khớp
+def setup(bot):
+    bot.add_cog(TestSlashCog(bot))
