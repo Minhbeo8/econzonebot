@@ -2,8 +2,8 @@
 
 import nextcord
 from nextcord.ext import commands
-from core.bot import BOT_VERSION
-# Sửa lại import: Thay vì import từng icon, ta import cả class Icons
+# Sửa lại import: Lấy BOT_VERSION từ core.config thay vì core.bot
+from core.config import BOT_VERSION
 from core.icons import Icons 
 
 class TestSlashCog(commands.Cog):
@@ -18,7 +18,6 @@ class TestSlashCog(commands.Cog):
     @test_slash.subcommand(name="ping", description="Kiểm tra độ trễ của bot.")
     async def ping(self, interaction: nextcord.Interaction):
         latency = self.bot.latency * 1000  # Convert to ms
-        # Sử dụng icon đúng cách: Icons.bot
         embed = nextcord.Embed(
             title=f"{Icons.bot} Pong!",
             description=f"Độ trễ của bot là: `{latency:.2f}ms`",
@@ -28,7 +27,6 @@ class TestSlashCog(commands.Cog):
 
     @test_slash.subcommand(name="info", description="Hiển thị thông tin về bot.")
     async def info(self, interaction: nextcord.Interaction):
-        # Sử dụng icon đúng cách: Icons.admin
         embed = nextcord.Embed(
             title=f"{Icons.admin} Thông tin Bot",
             description="Đây là bot kinh tế cho EconZone.",
